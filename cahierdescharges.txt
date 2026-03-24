@@ -1,0 +1,351 @@
+📘 CAHIER DES CHARGES – APPLICATION DE GESTION DES RESSOURCES NUMÉRIQUES D’ENTREPRISE
+1. Contexte
+
+Les entreprises gèrent aujourd’hui leurs ressources (matériel, comptes, accès, véhicules) via des documents papier ou des outils hétérogènes.
+Le projet vise à centraliser, tracer et sécuriser la gestion complète du cycle de vie des ressources.
+
+2. Objectifs
+
+Centraliser les ressources numériques et matérielles
+
+Numériser les contrats internes
+
+Assurer la traçabilité complète
+
+Garantir la conformité RGPD / CNIL
+
+Proposer une application locale puis hébergeable
+
+3. Utilisateurs
+
+Super Administrateur (créateur)
+
+Administrateur d’entreprise
+
+Employé
+
+Gestion des rôles et habilitations obligatoire.
+
+4. Fonctionnalités principales
+
+Authentification sécurisée
+
+Création d’entreprises
+
+Gestion dynamique des types de ressources
+
+Affectation des ressources
+
+Génération de contrats numériques
+
+Historique et journalisation automatique
+
+Tableaux de bord
+
+Archivage et purge RGPD
+
+5. Architecture technique
+
+Langage : Python
+
+Interface : Desktop (PySide6)
+
+Base de données : SQLite
+
+ORM : SQLAlchemy
+
+Séparation MVC
+
+Logs applicatifs et BDD
+
+6. Sécurité
+
+Hashage des mots de passe (bcrypt)
+
+Aucune requête SQL brute
+
+Requêtes préparées uniquement
+
+Protection contre SQL Injection
+
+Validation stricte des entrées
+
+Journalisation complète
+
+7. RGPD / CNIL
+
+Minimisation des données
+
+Durée de conservation paramétrable
+
+Droit à l’oubli (anonymisation)
+
+Traçabilité des accès
+
+Intégrité des contrats (hash)
+
+8. Base de données
+
+Contraintes FK
+
+Triggers automatiques (logs, RGPD)
+
+Transactions obligatoires
+
+Sauvegarde locale
+
+9. Déploiement
+
+Application locale macOS (.app)
+
+Base SQLite intégrée
+
+Documentation utilisateur
+
+Manuel technique
+
+10. Normes & bonnes pratiques
+
+RGPD / CNIL
+
+Sécurité OWASP (niveau applicatif)
+
+Organisation modulaire
+
+Tests unitaires
+
+11. Évolutions prévues
+
+Hébergement web
+
+Signature électronique avancée
+
+Multi-entreprises
+
+API REST
+
+⬆️ FIN DU CAHIER DES CHARGES ⬆️
+
+Choix de la BDD
+
+Type : SQLite
+
+🧠 CONCEPT DU PROJET (VALIDÉ)
+Gestionnaire universel de ressources numériques et matérielles d’entreprise
+
+Une application adaptable à tout type de domaine (location, hôtellerie, PME, etc.)
+
+👉 Objectif principal :
+centraliser, tracer et numériser la vie complète des ressources de l’entreprise, là où aujourd’hui tout est souvent en papier ou dispersé.
+
+👤 MODÈLE DE COMPTES (TRÈS PRO)
+🔑 Compte Créateur / Super-Admin (toi)
+
+Crée des espaces entreprise
+
+Paramètre les types de ressources
+
+Définit les rôles et droits
+
+Adapte l’outil au domaine (location, hôtel, etc.)
+
+🏢 Compte Administrateur d’entreprise
+
+Vue globale sur toutes les ressources
+
+Accès aux historiques et logs
+
+Gestion des utilisateurs internes
+
+👷 Comptes Utilisateurs / Employés
+
+Accès limité selon rôle
+
+Signature numérique
+
+Historique personnel
+
+👉 Gestion fine des habilitations = gros point BTS
+
+🧩 TYPES DE RESSOURCES GÉRÉES (FLEXIBLE)
+
+La force du projet : pas figé
+
+Véhicules
+
+Appareils (PC, téléphones, tablettes)
+
+Comptes numériques (emails, logiciels)
+
+Services
+
+Accès (badges, clés, cartes)
+
+Chaque entreprise choisit ce qu’elle gère.
+
+🔄 CYCLE DE VIE COMPLET D’UNE RESSOURCE
+
+Pour chaque ressource :
+
+Achat / mise en service
+
+Affectation
+
+Utilisation
+
+Restitution
+
+Maintenance
+
+Fin de vie
+
+👉 C’est là que ton projet devient très différenciant
+
+📜 NUMÉRISATION DES CONTRATS (IDÉE FORTE)
+
+Tu réponds à un problème réel :
+
+Contrats papier
+
+Pas d’historique fiable
+
+Peu de traçabilité
+
+Ton application permet :
+
+Génération de contrats numériques
+
+Signature électronique simple
+
+Archivage
+
+Lien direct ressource ↔ personne ↔ période
+
+⚠️ Pas besoin de valeur légale réelle → simulation pédagogique suffisante pour BTS
+
+🧾 LOGS & TRAÇABILITÉ (TRÈS BTS)
+
+Chaque action génère :
+
+Date
+
+Heure
+
+Utilisateur
+
+Action
+
+Ressource concernée
+
+👉 Idéal pour :
+
+Continuité de service
+
+Audit
+
+Justification orale au jury
+
+🏨 EXEMPLES D’ADAPTATION (EXCELLENTE IDÉE)
+🔹 Agence de location de véhicules
+
+Suivi des véhicules
+
+Historique des locations
+
+Employé responsable
+
+Client
+
+Contrat numérique
+
+Logs complets
+
+🔹 Hôtel
+
+Appareils de l’établissement
+
+Affectation aux employés
+
+Historique
+
+Contrats internes
+
+Suivi des équipements
+
+👉 Le jury adore les cas métiers concrets
+
+🧠 COUVERTURE DU RÉFÉRENTIEL BTS SIO (CLÉ)
+
+Sans forcer :
+
+✔️ Gérer le patrimoine informatique
+
+Inventaire global
+
+Ressources numériques & matérielles
+
+Habilitations
+
+Règles d’utilisation
+
+Continuité & historique
+
+✔️ Répondre aux demandes
+
+Affectations
+
+Restitutions
+
+Évolutions de ressources
+
+✔️ Présence numérique
+
+Digitalisation
+
+Image moderne de l’entreprise
+
+Données exploitables
+
+✔️ Travailler en mode projet
+
+Multi-acteurs
+
+Paramétrage par entreprise
+
+Indicateurs & suivi
+
+✔️ Mettre à disposition un service
+
+Application déployable
+
+Tests
+
+Formation utilisateur
+
+✔️ Développement professionnel
+
+Veille (signature numérique, RGPD, SI)
+
+Identité pro (outil pro)
+
+🟢 RÉALISABILITÉ (IMPORTANT)
+
+✔️ 100 % faisable en local sur macOS
+✔️ Python + SQLite
+✔️ Interface desktop
+✔️ Générable en application .app
+✔️ Hébergeable plus tard (Flask / FastAPI)
+
+👉 Tu peux commencer simple, puis montrer l’évolution (très bien vu).
+
+🚀 PROCHAINES ÉTAPES POSSIBLES
+
+Si tu veux, je peux maintenant :
+
+Définir le périmètre exact BTS-safe (ni trop, ni pas assez)
+
+Te proposer une version 1 réaliste
+
+Faire un schéma global (conceptuel)
+
+T’aider à vendre le projet à l’oral
