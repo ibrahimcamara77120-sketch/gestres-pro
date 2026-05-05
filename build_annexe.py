@@ -79,288 +79,301 @@ def flow(c, x, y_top, w_pt, h_mm, text, fn="AU", sz=7.5, ld=9.5, pad=1.5, color=
             story.append(Spacer(1, 3))
     frame.addFromList(story, c)
 
-def labeled_box(c, y_top, h_mm, label, content, fn_c="AU", sz_c=7.5, ld_c=9.5, lw=0.7):
+def labeled_box(c, y_top, h_mm, label, content, fn_c="AU", sz_c=7.5, ld_c=9.5, lw=0.7,
+                x=None, w=None):
     """Encadré avec label en italique en haut + contenu enroulé."""
-    draw_rect(c, LM, y_top, TW, h_mm, lw=lw)
+    _x = x if x is not None else LM
+    _w = w if w is not None else TW
+    draw_rect(c, _x, y_top, _w, h_mm, lw=lw)
     # Ligne séparatrice label/contenu (à 5mm du haut)
-    hl(c, y_top + 5, x0=LM, x1=RM, lw=0.4)
+    hl(c, y_top + 5, x0=_x, x1=_x + _w, lw=0.4)
     # Label
-    T(c, LM + 1.5*mm, y_top + 3.8, label, fn="Helvetica-Oblique", sz=7)
+    T(c, _x + 1.5*mm, y_top + 3.8, label, fn="Helvetica-Oblique", sz=7)
     # Contenu
-    flow(c, LM, y_top + 5, TW, h_mm - 5, content, fn=fn_c, sz=sz_c, ld=ld_c)
+    flow(c, _x, y_top + 5, _w, h_mm - 5, content, fn=fn_c, sz=sz_c, ld=ld_c)
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# PAGE 1 — RECTO
+# PAGE 1 — RECTO  (calé sur coordonnées Annexe 9 officielle)
 # ════════════════════════════════════════════════════════════════════════════
 c = canvas.Canvas(OUT, pagesize=A4)
 
-# ── En-tête encadré ─────────────────────────────────────────────────────────
-draw_rect(c, LM, 10, TW, 10, lw=1.0, fill=colors.Color(0.92,0.92,0.92))
-T(c, LM + 3*mm, 17, "BTS SERVICES INFORMATIQUES AUX ORGANISATIONS",
-  fn="Helvetica-Bold", sz=9)
-TR(c, RM - 3*mm, 17, "SESSION 2026", fn="Helvetica-Bold", sz=9)
+# Constantes formulaire officiel (pt)
+LM_F = 49          # bord gauche
+RM_F = 546         # bord droit
+TW_F = RM_F - LM_F  # 497 pt
 
-# ── Sous-titres formulaire ───────────────────────────────────────────────────
-T(c, LM, 23.5,
-  "ANNEXE VII-1-B : Fiche descriptive de réalisation professionnelle (recto)",
-  fn="Helvetica", sz=8)
-T(c, LM, 28,
-  "Épreuve E6 - Conception et développement d'applications (option SLAM)",
-  fn="Helvetica-Oblique", sz=7.5)
+# Positions y (mm depuis le haut) converties depuis pt ÷ 2.835
+YH1  = 19.4   # haut en-tête
+YH2  = 41.5   # bas en-tête
+YF1  = 43.9   # 1ère ligne formulaire
+YR1  = 54.2   # après "DESCRIPTION / N° réalisation"
+YR2  = 62.3   # après "Nom / N° candidat"
+YR3  = 71.4   # après "Épreuve / CCF / Date"
+YR4  = 80.7   # après "Organisation"
+YR5  = 89.8   # après "Intitulé"
+YR6  = 103.5  # après "Période / Lieu / Modalité"
+YR7  = 124.7  # après "Compétences"
+YR8  = 154.0  # après "Conditions de réalisation"
+YR9  = 211.2  # après "Description des ressources"
+YR10 = 231.6  # bas zone formulaire (après "Modalités")
+YFN  = 237.7  # ligne séparatrice notes bas de page
 
-# ── Titre section ────────────────────────────────────────────────────────────
-hl(c, 30.5, lw=0.8)
-TC(c, 34.5, "DESCRIPTION D'UNE RÉALISATION PROFESSIONNELLE",
+# ── En-tête grisé ────────────────────────────────────────────────────────
+draw_rect(c, LM_F, YH1, TW_F, YH2 - YH1, lw=0.8,
+          fill=colors.Color(0.92, 0.92, 0.92))
+TC(c, YH1 + 7,  "BTS SERVICES INFORMATIQUES AUX ORGANISATIONS",
    fn="Helvetica-Bold", sz=9)
-hl(c, 36, lw=0.8)
+TR(c, RM_F - 2*mm, YH1 + 7, "SESSION 2026", fn="Helvetica-Bold", sz=9)
+TC(c, YH1 + 15,
+   "ANNEXE VII-1-B : Fiche descriptive de réalisation professionnelle (recto)",
+   fn="Helvetica", sz=8)
+TC(c, YH1 + 21,
+   "Épreuve E6 - Conception et développement d'applications (option SLAM)",
+   fn="Helvetica-Oblique", sz=7.5)
 
-# ── Ligne identité (N° réal | Nom | N° candidat) ────────────────────────────
-draw_rect(c, LM, 37, TW, 8, lw=0.6)
-vl(c, LM + TW*0.20, 37, 45)
-vl(c, LM + TW*0.60, 37, 45)
-T(c, LM+2*mm, 42, "N° réalisation :  1", sz=7.5)
-T(c, LM + TW*0.20 + 2*mm, 42, "Nom, prénom :  CAMARA Ibrahim", fn="AU", sz=7.5)
-T(c, LM + TW*0.60 + 2*mm, 42, "N° candidat :  2545812845", sz=7.5)
+# ── Bordures verticales du formulaire ─────────────────────────────────────
+vl(c, LM_F, YF1, YR10)
+vl(c, RM_F, YF1, YR10)
 
-# ── Ligne épreuve / CCF / date ───────────────────────────────────────────────
-draw_rect(c, LM, 45, TW, 8, lw=0.6)
-vl(c, LM + TW*0.38, 45, 53)
-vl(c, LM + TW*0.72, 45, 53)
+# ── Lignes horizontales (coordonnées exactes Annexe 9) ────────────────────
+for _y in [YF1, YR1, YR2, YR3, YR4, YR5, YR6, YR7, YR8, YR9, YR10]:
+    hl(c, _y, x0=LM_F, x1=RM_F, lw=0.6)
 
-checkbox(c, LM + 2*mm, 50)
-T(c, LM + 9*mm, 50, "Épreuve ponctuelle", sz=7.5)
+# ── Diviseurs verticaux ───────────────────────────────────────────────────
+vl(c, 445.5, YF1, YR1)      # N° réalisation
+vl(c, 410.5, YR1, YR3)      # Nom / N° candidat
 
-checkbox(c, LM + TW*0.38 + 2*mm, 50, checked=True)
-T(c, LM + TW*0.38 + 9*mm, 50, "Contrôle en cours de formation (CCF)", fn="AU", sz=7.5)
+# ── Rangée 1 : DESCRIPTION / N° réalisation ───────────────────────────────
+_ym = YF1 + (YR1 - YF1) / 2 + 1.5
+TC(c, _ym, "DESCRIPTION D'UNE RÉALISATION PROFESSIONNELLE",
+   fn="Helvetica-Bold", sz=8)
+T(c, 448, _ym, "N° réalisation :  1", fn="AU", sz=7.5)
 
-T(c, LM + TW*0.72 + 2*mm, 50, "Date :", sz=7.5)
-T(c, LM + TW*0.72 + 13*mm, 50, "24 / 03 / 2026", sz=7.5)
+# ── Rangée 2 : Nom / N° candidat ──────────────────────────────────────────
+_ym = YR1 + (YR2 - YR1) / 2 + 1.5
+T(c, LM_F + 2*mm, _ym, "Nom, prénom :  CAMARA Ibrahim", fn="AU", sz=8)
+T(c, 413, _ym, "N° candidat :  2545812845", fn="AU", sz=8)
 
-# ── Organisation ────────────────────────────────────────────────────────────
-labeled_box(c, 53, 11,
-    "Organisation support de la réalisation professionnelle",
-    "Digital School of Paris - IEF2I",
-    fn_c="AU", sz_c=9, ld_c=11)
+# ── Rangée 3 : Épreuve / CCF / Date ──────────────────────────────────────
+_x1 = LM_F + TW_F * 0.38
+_x2 = LM_F + TW_F * 0.72
+vl(c, _x1, YR2, YR3)
+vl(c, _x2, YR2, YR3)
+_ym = YR2 + (YR3 - YR2) / 2 + 1.5
+checkbox(c, LM_F + 2*mm, _ym)
+T(c, LM_F + 9*mm, _ym, "Épreuve ponctuelle", sz=7.5)
+checkbox(c, _x1 + 2*mm, _ym, checked=True)
+T(c, _x1 + 9*mm, _ym, "Contrôle en cours de formation (CCF)", fn="AU", sz=7.5)
+T(c, _x2 + 2*mm, _ym, "Date :  24 / 03 / 2026", fn="AU", sz=7.5)
 
-# ── Intitulé ─────────────────────────────────────────────────────────────────
-labeled_box(c, 64, 12,
-    "Intitulé de la réalisation professionnelle",
-    "GestRes Pro — Application desktop de gestion des ressources d'entreprise",
-    fn_c="AU", sz_c=9, ld_c=11)
+# ── Rangée 4 : Organisation ───────────────────────────────────────────────
+T(c, LM_F + 1.5*mm, YR3 + 3.5,
+  "Organisation support de la réalisation professionnelle",
+  fn="Helvetica-Oblique", sz=7)
+T(c, LM_F + 2*mm, YR3 + 7.5, "Digital School de Paris - IEF2I", fn="AU", sz=8.5)
 
-# ── Période / Lieu / Modalité ────────────────────────────────────────────────
-draw_rect(c, LM, 76, TW, 9, lw=0.6)
-vl(c, LM + TW*0.42, 76, 85)
-vl(c, LM + TW*0.72, 76, 85)
+# ── Rangée 5 : Intitulé ───────────────────────────────────────────────────
+T(c, LM_F + 1.5*mm, YR4 + 3.5,
+  "Intitulé de la réalisation professionnelle",
+  fn="Helvetica-Oblique", sz=7)
+T(c, LM_F + 2*mm, YR4 + 7.5,
+  "GestRes Pro \u2014 Application desktop de gestion des ressources d\u2019entreprise",
+  fn="AU", sz=8.5)
 
-T(c, LM+2*mm, 81.5, "Période de réalisation :", sz=7)
-T(c, LM+33*mm, 81.5, "09/2024 au 05/2026", fn="AU", sz=7.5)
+# ── Rangée 6 : Période / Lieu / Modalité ─────────────────────────────────
+_xp = LM_F + TW_F * 0.42
+_xm = LM_F + TW_F * 0.72
+vl(c, _xp, YR5, YR6)
+vl(c, _xm, YR5, YR6)
+T(c, LM_F + 1.5*mm, YR5 + 3.5, "Période de réalisation :", fn="Helvetica-Oblique", sz=7)
+T(c, LM_F + 2*mm,   YR5 + 9,   "09 / 2024  au  05 / 2026", fn="AU", sz=7.5)
+T(c, _xp + 1.5*mm,  YR5 + 3.5, "Lieu :", fn="Helvetica-Oblique", sz=7)
+T(c, _xp + 2*mm,    YR5 + 9,   "Digital School de Paris - IEF2I", fn="AU", sz=7)
+T(c, _xm + 1.5*mm,  YR5 + 3,   "Modalité :", fn="Helvetica-Oblique", sz=7)
+checkbox(c, _xm + 2*mm, YR5 + 9, checked=True)
+T(c, _xm + 9*mm,    YR5 + 9,   "Seul(e)", sz=7)
+checkbox(c, _xm + 22*mm, YR5 + 9)
+T(c, _xm + 29*mm,   YR5 + 9,   "En équipe", sz=7)
 
-T(c, LM + TW*0.42 + 2*mm, 81.5, "Lieu :", sz=7)
-T(c, LM + TW*0.42 + 10*mm, 81.5, "Digital School de Paris - IEF2I", fn="AU", sz=7)
+# ── Rangée 7 : Compétences ────────────────────────────────────────────────
+hl(c, YR6 + 5, x0=LM_F, x1=RM_F, lw=0.4)
+T(c, LM_F + 1.5*mm, YR6 + 3.5, "Compétences travaillées",
+  fn="Helvetica-Oblique", sz=7)
+_yc = YR6 + 9
+checkbox(c, LM_F + 2*mm, _yc, checked=True)
+T(c, LM_F + 9*mm, _yc, "Concevoir et développer une solution applicative",
+  fn="AU", sz=7.5)
+_yc += 5
+checkbox(c, LM_F + 2*mm, _yc, checked=True)
+T(c, LM_F + 9*mm, _yc,
+  "Assurer la maintenance corrective ou évolutive d\u2019une solution applicative",
+  fn="AU", sz=7.5)
+_yc += 5
+checkbox(c, LM_F + 2*mm, _yc, checked=True)
+T(c, LM_F + 9*mm, _yc, "Gérer les données", fn="AU", sz=7.5)
 
-T(c, LM + TW*0.72 + 2*mm, 80, "Modalité :", sz=7)
-checkbox(c, LM + TW*0.72 + 2*mm, 84, checked=True)
-T(c, LM + TW*0.72 + 9.5*mm, 84, "Seul(e)", sz=7)
-checkbox(c, LM + TW*0.72 + 22*mm, 84)
-T(c, LM + TW*0.72 + 29.5*mm, 84, "En équipe", sz=7)
+# ── Rangée 8 : Conditions de réalisation ─────────────────────────────────
+labeled_box(c, YR7, YR8 - YR7,
+    "Conditions de r\u00e9alisation\u00b9  (ressources fournies, r\u00e9sultats attendus)",
+    "Contexte : Les entreprises g\u00e8rent leurs ressources (mat\u00e9riel IT, comptes, v\u00e9hicules, "
+    "badges) via Excel ou papier, engendrant perte de tra\u00e7abilit\u00e9 et non-conformit\u00e9 RGPD. "
+    "GestRes Pro centralise, s\u00e9curise et trace le cycle de vie complet.\n"
+    "Ressources : Python 3.14 \u00b7 PySide6 \u2265 6.6.0 \u00b7 SQLAlchemy 2.0 / SQLite 3 \u00b7 "
+    "bcrypt 4.1 \u00b7 ReportLab 4.0 \u00b7 PyCharm Professional \u00b7 Git/GitHub.\n"
+    "R\u00e9sultats attendus : App MVC \u2014 auth bcrypt+SHA-256 (sessions 8h) \u2014 3 r\u00f4les "
+    "(permissions JSON) \u2014 CRUD + validation SIRET (Luhn) \u2014 contrats PDF + SHA-256 "
+    "verify_integrity() \u2014 logs d\u2019audit \u2014 conformit\u00e9 RGPD \u2014 155 tests pytest.",
+    sz_c=7.5, ld_c=9.5, x=LM_F, w=TW_F)
 
-# ── Compétences ──────────────────────────────────────────────────────────────
-draw_rect(c, LM, 85, TW, 18, lw=0.7)
-hl(c, 90, x0=LM, x1=RM, lw=0.4)
-T(c, LM+1.5*mm, 88.8, "Compétences travaillées", fn="Helvetica-Oblique", sz=7)
+# ── Rangée 9 : Description des ressources ────────────────────────────────
+labeled_box(c, YR8, YR9 - YR8,
+    "Description des ressources documentaires, mat\u00e9rielles et logicielles utilis\u00e9es\u00b2",
+    "Langages & frameworks : Python 3.14 \u2014 PySide6 \u2265 6.6.0 / Qt for Python (GUI desktop native)\n"
+    "ORM & BDD : SQLAlchemy \u2265 2.0.0 (z\u00e9ro SQL brut) \u2014 SQLite 3 (database.db local)\n"
+    "S\u00e9curit\u00e9 : bcrypt \u2265 4.1.0 (rounds=12) \u2014 SHA-256 (tokens session + int\u00e9grit\u00e9 contrats) \u2014 "
+    "secrets.token_hex(32) \u2014 validate_siret Luhn 14 chiffres (rejet SIRET nuls, bug corrig\u00e9 03/2026)\n"
+    "PDF : reportlab \u2265 4.0.0 (SimpleDocTemplate A4, Paragraph, Table, HRFlowable)\n"
+    "Tests : pytest \u2014 3 fichiers, 155 tests \u2014 conftest.py (SQLite in-memory, isolation totale, "
+    "database.db jamais modifi\u00e9 pendant pytest)\n"
+    "Environnement : PyCharm Professional \u2014 Git/GitHub \u2014 macOS Darwin 24.1.0 (Python 3.14)\n"
+    "Packaging : PyInstaller \u2192 livrable .app autonome macOS\n"
+    "Documentation : docs/ du d\u00e9p\u00f4t \u2014 portfolio : https://ib-camara.vercel.app/",
+    sz_c=7.5, ld_c=9.5, x=LM_F, w=TW_F)
 
-checkbox(c, LM+2*mm, 95, checked=True)
-T(c, LM+9.5*mm, 95, "Concevoir et développer une solution applicative", fn="AU", sz=7.5)
-
-checkbox(c, LM+2*mm, 99, checked=True)
-T(c, LM+9.5*mm, 99, "Assurer la maintenance corrective ou évolutive d'une solution applicative", fn="AU", sz=7.5)
-
-checkbox(c, LM+2*mm, 103, checked=True)
-T(c, LM+9.5*mm, 103, "Gérer les données", fn="AU", sz=7.5)
-
-# ── Conditions de réalisation ────────────────────────────────────────────────
-labeled_box(c, 103, 40,
-    "Conditions de réalisation\u00b9  (ressources fournies, résultats attendus)",
-    "Contexte : Les entreprises gèrent leurs ressources (matériel IT, comptes numériques, véhicules, badges) "
-    "via Excel ou papier, engendrant perte de traçabilité et non-conformité RGPD. GestRes Pro centralise, "
-    "sécurise et trace le cycle de vie complet.\n"
-    "\n"
-    "Ressources fournies : Python 3.14, PySide6 ≥ 6.6.0, SQLAlchemy 2.0 / SQLite 3, bcrypt 4.1 (cost 12), "
-    "ReportLab 4.0, python-dateutil, cahier des charges (entretiens), documentation RGPD/CNIL, "
-    "PyCharm Professional, Git/GitHub.\n"
-    "\n"
-    "Résultats attendus : App desktop MVC — auth bcrypt+SHA-256 (sessions 8h) — 3 rôles (permissions JSON) — "
-    "CRUD + validation SIRET (Luhn) — cycle de vie 4 statuts — contrats PDF + SHA-256 verify_integrity() — "
-    "logs d'audit (old/new JSON) — conformité RGPD — 155 tests pytest.",
-    sz_c=7.5, ld_c=9.5)
-
-# ── Description des ressources ───────────────────────────────────────────────
-labeled_box(c, 143, 53,
-    "Description des ressources documentaires, matérielles et logicielles utilisées\u00b2",
-    "Langages & frameworks : Python 3.14 — PySide6 ≥ 6.6.0 / Qt for Python (GUI desktop native)\n"
-    "ORM & BDD : SQLAlchemy ≥ 2.0.0 (zéro SQL brut) — SQLite 3 (database.db local)\n"
-    "Sécurité : bcrypt ≥ 4.1.0 (rounds=12) — SHA-256 (tokens session + intégrité contrats) — "
-    "secrets.token_hex(32) — validate_siret Luhn 14 chiffres (rejet SIRET nuls, bug corrigé 03/2026)\n"
-    "PDF : reportlab ≥ 4.0.0 (SimpleDocTemplate A4, Paragraph, Table, HRFlowable)\n"
-    "Tests : pytest — 3 fichiers, 155 tests — conftest.py (SQLite in-memory, isolation totale, "
-    "database.db jamais modifié pendant pytest)\n"
-    "Environnement : PyCharm Professional — Git/GitHub — macOS Darwin 24.1.0 (Python 3.14)\n"
-    "Packaging : PyInstaller → livrable .app autonome macOS\n"
-    "Documentation : docs/ du dépôt — portfolio : https://ib-camara.vercel.app/",
-    sz_c=7.5, ld_c=9.5)
-
-# ── Modalités d'accès ────────────────────────────────────────────────────────
-labeled_box(c, 196, 35,
-    "Modalités d'accès aux productions\u00b3 et à leur documentation\u2074",
+# ── Rangée 10 : Modalités d'accès ────────────────────────────────────────
+labeled_box(c, YR9, YR10 - YR9,
+    "Modalit\u00e9s d\u2019acc\u00e8s aux productions\u00b3 et \u00e0 leur documentation\u2074",
     "Lancement : source .venv/bin/activate && python main.py\n"
-    "(Super Admin créé automatiquement au 1er démarrage si aucun compte n'existe)\n"
-    "\n"
-    "Tests : python -m pytest tests/ -v   (155 tests, SQLite in-memory, isolation totale)\n"
-    "\n"
-    "Code source & docs : dépôt GitHub (en cours de mise en ligne)\n"
-    "Portfolio : https://ib-camara.vercel.app/\n"
-    "Livrable : .app macOS autonome via PyInstaller — dossier /docs/ du dépôt",
-    sz_c=7.5, ld_c=9.5)
+    "Tests : python -m pytest tests/ -v  (155 tests, SQLite in-memory, isolation totale)\n"
+    "Code source & docs : d\u00e9p\u00f4t GitHub \u2014 Portfolio : https://ib-camara.vercel.app/",
+    sz_c=7.5, ld_c=9.5, x=LM_F, w=TW_F)
 
-# ── Notes de bas de page ─────────────────────────────────────────────────────
-hl(c, 231, lw=0.6)
-fn_style = ParagraphStyle("fn", fontName="AU", fontSize=6, leading=8, spaceAfter=2)
-fn_frame = Frame(LM, yb(231, 57), TW, 57*mm,
+# ── Notes de bas de page ─────────────────────────────────────────────────
+hl(c, YFN, x0=57, x1=201, lw=0.6)
+fn_style = ParagraphStyle("fn", fontName="AU", fontSize=6, leading=7.5, spaceAfter=1.5)
+fn_frame = Frame(LM_F, yb(YFN, 842/mm - YFN - 2), TW_F, (842/mm - YFN - 4)*mm,
                  leftPadding=0, rightPadding=0, topPadding=2, bottomPadding=0)
 footnotes = [
     Paragraph(
-        "\u00b9 En référence aux conditions de réalisation et ressources nécessaires du bloc "
-        "« Conception et développement d'applications » prévues dans le référentiel de certification du BTS SIO.",
+        "\u00b9 En r\u00e9f\u00e9rence aux conditions de r\u00e9alisation et ressources n\u00e9cessaires du bloc "
+        "\u00ab\u202fConception et d\u00e9veloppement d\u2019applications\u202f\u00bb pr\u00e9vues dans le r\u00e9f\u00e9rentiel BTS SIO.",
         fn_style),
     Spacer(1, 2),
     Paragraph(
-        "\u00b2 Les réalisations professionnelles sont élaborées dans un environnement technologique "
-        "conforme à l'annexe II.E du référentiel du BTS SIO.",
+        "\u00b2 Les r\u00e9alisations professionnelles sont \u00e9labor\u00e9es dans un environnement technologique "
+        "conforme \u00e0 l\u2019annexe II.E du r\u00e9f\u00e9rentiel du BTS SIO.",
         fn_style),
     Spacer(1, 2),
     Paragraph(
-        "\u00b3 Conformément au référentiel du BTS SIO : « Dans tous les cas, les candidats doivent se munir "
-        "des outils et ressources techniques nécessaires au déroulement de l'épreuve. Ils sont seuls "
-        "responsables de la disponibilité et de la mise en œuvre de ces outils et ressources. La circulaire "
-        "nationale d'organisation précise les conditions matérielles de déroulement des interrogations et les "
-        "pénalités à appliquer aux candidats qui ne se seraient pas munis des éléments nécessaires. »",
+        "\u00b3 Conform\u00e9ment au r\u00e9f\u00e9rentiel BTS SIO : \u00ab Dans tous les cas, les candidats doivent se "
+        "munir des outils et ressources techniques n\u00e9cessaires au d\u00e9roulement de l\u2019\u00e9preuve. \u00bb",
         fn_style),
     Spacer(1, 2),
     Paragraph(
-        "\u2074 Lien vers la documentation complète, précisant et décrivant, si cela n'a été fait au verso "
-        "de la fiche, la réalisation professionnelle, par exemples service fourni par la réalisation, "
-        "interfaces utilisateurs, description des classes ou de la base de données.",
+        "\u2074 Lien vers la documentation compl\u00e8te, pr\u00e9cisant et d\u00e9crivant, si cela n\u2019a \u00e9t\u00e9 fait "
+        "au verso de la fiche, la r\u00e9alisation professionnelle.",
         fn_style),
 ]
 fn_frame.addFromList(footnotes, c)
 
-# Numéro de page
 TC(c, 289, "1", fn="Helvetica", sz=8)
-
 c.showPage()
 
 # ════════════════════════════════════════════════════════════════════════════
-# PAGE 2 — VERSO (descriptif principal)
+# PAGE 2 — VERSO  (calé sur coordonnées Annexe 9 officielle)
 # ════════════════════════════════════════════════════════════════════════════
 
-# En-tête
-draw_rect(c, LM, 10, TW, 10, lw=1.0, fill=colors.Color(0.92,0.92,0.92))
-T(c, LM + 3*mm, 17, "BTS SERVICES INFORMATIQUES AUX ORGANISATIONS",
-  fn="Helvetica-Bold", sz=9)
-TR(c, RM - 3*mm, 17, "SESSION 2026", fn="Helvetica-Bold", sz=9)
+# Constantes PAGE 2 (même LM_F/RM_F/TW_F que page 1)
+YP2_H1 = 19.4   # haut en-tête
+YP2_H2 = 46.1   # bas en-tête  (130.5pt / 2.835)
+YP2_C1 = 48.5   # haut zone contenu (137.5pt / 2.835)
+YP2_C2 = 240.2  # bas zone contenu  (680.5pt / 2.835)
 
-T(c, LM, 23.5,
-  "ANNEXE VII-1-B : Fiche descriptive de réalisation professionnelle (verso, éventuellement pages suivantes)",
-  fn="Helvetica", sz=8)
-T(c, LM, 28,
-  "Épreuve E6 - Conception et développement d'applications (option SLAM)",
-  fn="Helvetica-Oblique", sz=7.5)
+# ── En-tête grisé ────────────────────────────────────────────────────────
+draw_rect(c, LM_F, YP2_H1, TW_F, YP2_H2 - YP2_H1, lw=0.8,
+          fill=colors.Color(0.92, 0.92, 0.92))
+TC(c, YP2_H1 + 7,  "BTS SERVICES INFORMATIQUES AUX ORGANISATIONS",
+   fn="Helvetica-Bold", sz=9)
+TR(c, RM_F - 2*mm, YP2_H1 + 7, "SESSION 2026", fn="Helvetica-Bold", sz=9)
+TC(c, YP2_H1 + 15,
+   "ANNEXE VII-1-B : Fiche descriptive de r\u00e9alisation professionnelle",
+   fn="Helvetica", sz=8)
+TC(c, YP2_H1 + 21,
+   "(verso, \u00e9ventuellement pages suivantes)",
+   fn="Helvetica", sz=8)
+TC(c, YP2_H1 + 27,
+   "\u00c9preuve E6 - Conception et d\u00e9veloppement d\u2019applications (option SLAM)",
+   fn="Helvetica-Oblique", sz=7.5)
 
-hl(c, 30, lw=0.8)
+# ── Zone contenu unique (Descriptif) ─────────────────────────────────────
+draw_rect(c, LM_F, YP2_C1, TW_F, YP2_C2 - YP2_C1, lw=0.8)
+hl(c, YP2_C1 + 5, x0=LM_F, x1=RM_F, lw=0.4)
+T(c, LM_F + 1.5*mm, YP2_C1 + 3.8,
+  "Descriptif de la r\u00e9alisation professionnelle, y compris les productions r\u00e9alis\u00e9es et sch\u00e9mas explicatifs",
+  fn="Helvetica-Oblique", sz=7)
 
-# Label section descriptif
-draw_rect(c, LM, 30, TW, 6, lw=0.5, fill=colors.Color(0.95,0.95,0.95))
-T(c, LM+2*mm, 35,
-  "Descriptif de la réalisation professionnelle, y compris les productions réalisées et schémas explicatifs",
-  fn="Helvetica-Oblique", sz=7.5)
-
-# ── Contenu verso ────────────────────────────────────────────────────────────
-# Introduction
-labeled_box(c, 36, 20,
-    "Présentation générale",
+# ── Contenu : Présentation + Architecture + Tables ────────────────────────
+flow(c, LM_F, YP2_C1 + 5, TW_F, YP2_C2 - YP2_C1 - 5,
+    "Pr\u00e9sentation g\u00e9n\u00e9rale\n"
     "GestRes Pro est une application desktop Python 3.14 / PySide6 centralisant la gestion des ressources "
-    "d'entreprise (matériel informatique, comptes numériques, véhicules, badges d'accès) avec 3 niveaux de "
-    "rôles (Super Admin, Admin, Employé), génération de contrats PDF signés électroniquement et journal "
-    "d'audit conforme RGPD.",
-    sz_c=7.8, ld_c=10)
-
-# Architecture MVC
-labeled_box(c, 56, 88,
-    "Architecture MVC",
-    "src/models/  (10 modèles SQLAlchemy)\n"
-    "  · user.py          — User [email, password_hash bcrypt, is_active, last_login]\n"
+    "d\u2019entreprise (mat\u00e9riel informatique, comptes num\u00e9riques, v\u00e9hicules, badges d\u2019acc\u00e8s) avec 3 niveaux de "
+    "r\u00f4les (Super Admin, Admin, Employ\u00e9), g\u00e9n\u00e9ration de contrats PDF sign\u00e9s \u00e9lectroniquement et journal "
+    "d\u2019audit conforme RGPD.\n"
+    "\n"
+    "Architecture MVC\n"
+    "src/models/  (10 mod\u00e8les SQLAlchemy)\n"
+    "  \u00b7 user.py          \u2014 User [email, password_hash bcrypt, is_active, last_login]\n"
     "                        + Role [name, permissions JSON]\n"
-    "  · company.py       — Company [nom, SIRET Luhn, adresse, is_active]\n"
-    "  · resource_type.py — ResourceType [custom_fields JSON par entreprise]\n"
-    "  · resource.py      — Resource [statut 4 états, serial_number unique, custom_data JSON,\n"
+    "  \u00b7 company.py       \u2014 Company [nom, SIRET Luhn, adresse, is_active]\n"
+    "  \u00b7 resource_type.py \u2014 ResourceType [custom_fields JSON par entreprise]\n"
+    "  \u00b7 resource.py      \u2014 Resource [statut 4 \u00e9tats, serial_number unique, custom_data JSON,\n"
     "                        is_available, current_assignment]\n"
-    "  · assignment.py    — Assignment [resource_id, user_id, assigned_by,\n"
+    "  \u00b7 assignment.py    \u2014 Assignment [resource_id, user_id, assigned_by,\n"
     "                        start_date, end_date, duration_days, status]\n"
-    "  · contract.py      — Contract [content_hash SHA-256, sign(),\n"
+    "  \u00b7 contract.py      \u2014 Contract [content_hash SHA-256, sign(),\n"
     "                        verify_integrity(), pdf_path, signed_at, signature_hash]\n"
-    "  · audit_log.py     — AuditLog [action, table_name, record_id,\n"
+    "  \u00b7 audit_log.py     \u2014 AuditLog [action, table_name, record_id,\n"
     "                        old_values JSON, new_values JSON, ip_address]\n"
     "                        + Session [token_hash SHA-256, expires_at = now+8h]\n"
     "\n"
-    "src/controllers/  (6 contrôleurs)\n"
-    "  · auth_controller       — login / logout / create_user / change_password /\n"
+    "src/controllers/  (6 contr\u00f4leurs)\n"
+    "  \u00b7 auth_controller       \u2014 login / logout / create_user / change_password /\n"
     "                            create_initial_super_admin\n"
-    "                            (normalisation email lower().strip() ici, pas dans le modèle)\n"
-    "  · company_controller    — CRUD entreprises + validation SIRET (algorithme Luhn 14 chiffres)\n"
-    "  · resource_controller   — CRUD ressources + types, gestion des statuts\n"
-    "  · assignment_controller — create_assignment / close_assignment / cancel_assignment\n"
-    "  · contract_controller   — generate / sign / verify_contract / export_pdf (ReportLab)\n"
-    "  · user_controller       — CRUD utilisateurs + rôles\n"
+    "  \u00b7 company_controller    \u2014 CRUD entreprises + validation SIRET (Luhn 14 chiffres)\n"
+    "  \u00b7 resource_controller   \u2014 CRUD ressources + types, gestion des statuts\n"
+    "  \u00b7 assignment_controller \u2014 create_assignment / close_assignment / cancel_assignment\n"
+    "  \u00b7 contract_controller   \u2014 generate / sign / verify_contract / export_pdf (ReportLab)\n"
+    "  \u00b7 user_controller       \u2014 CRUD utilisateurs + r\u00f4les\n"
     "\n"
     "src/views/  (10 vues PySide6)\n"
     "  login, main_window, dashboard, users, companies, resources,\n"
-    "  assignments, contracts, logs + widgets/data_table.py (tableau paginé réutilisable)\n"
+    "  assignments, contracts, logs + widgets/data_table.py (tableau pagin\u00e9 r\u00e9utilisable)\n"
     "\n"
     "src/utils/\n"
-    "  · security.py    — hash_password, verify_password, generate_token, hash_token SHA-256,\n"
+    "  \u00b7 security.py    \u2014 hash_password, verify_password, generate_token, hash_token SHA-256,\n"
     "                     validate_password_strength, validate_email, validate_siret Luhn,\n"
-    "                     sanitize_input (strip + suppression caractères de contrôle)\n"
-    "  · backup.py      — sauvegardes automatiques de database.db\n"
-    "  · maintenance.py — purge RGPD : données expirées + sessions périmées\n"
+    "                     sanitize_input (strip + suppression caract\u00e8res de contr\u00f4le)\n"
+    "  \u00b7 backup.py      \u2014 sauvegardes automatiques de database.db\n"
+    "  \u00b7 maintenance.py \u2014 purge RGPD : donn\u00e9es expir\u00e9es + sessions p\u00e9rim\u00e9es\n"
     "\n"
-    "config.py : BCRYPT_ROUNDS=12 · SESSION_DURATION_HOURS=8 · PASSWORD_MIN_LENGTH=8\n"
-    "            DEFAULT_RETENTION_DAYS=1095 (3 ans) · AUDIT_LOG_RETENTION_DAYS=1825 (5 ans)",
-    sz_c=7.2, ld_c=9)
-
-# Tables
-labeled_box(c, 144, 75,
-    "Tables principales (10 tables SQLite)",
-    "roles          : super_admin=[\"all\"], admin=[\"view_resources\",\"manage_resources\",\"view_users\",\n"
-    "                 \"manage_users\",\"view_logs\",\"generate_contracts\",\"view_assignments\",\n"
-    "                 \"manage_assignments\"], employee=[\"view_own_resources\",\"view_own_assignments\",\n"
-    "                 \"sign_contracts\",\"view_own_history\"]   →  1:N vers users\n"
+    "config.py : BCRYPT_ROUNDS=12 \u00b7 SESSION_DURATION_HOURS=8 \u00b7 PASSWORD_MIN_LENGTH=8\n"
+    "            DEFAULT_RETENTION_DAYS=1095 (3 ans) \u00b7 AUDIT_LOG_RETENTION_DAYS=1825 (5 ans)\n"
+    "\n"
+    "Tables principales (10 tables SQLite)\n"
+    "roles          : super_admin=[\u00aball\u00bb], admin=[8 permissions], employee=[4 permissions]   \u21921:N users\n"
     "users          : email (lower+strip), password_hash bcrypt, is_active, last_login\n"
-    "                 →  N:1 vers roles / companies\n"
-    "companies      : nom, SIRET (Luhn 14 chiffres), adresse   →  1:N vers users/resource_types/resources\n"
-    "resource_types : custom_fields JSON par entreprise   →  1:N vers resources\n"
+    "                 \u2192 N:1 roles / companies\n"
+    "companies      : nom, SIRET (Luhn 14 chiffres), adresse   \u2192 1:N users/resource_types/resources\n"
+    "resource_types : custom_fields JSON par entreprise   \u2192 1:N resources\n"
     "resources      : statut (available/assigned/maintenance/retired), serial_number unique,\n"
-    "                 custom_data JSON, is_available   →  1:N vers assignments\n"
+    "                 custom_data JSON, is_available   \u2192 1:N assignments\n"
     "assignments    : resource_id, user_id, assigned_by, start_date, end_date, duration_days\n"
-    "                 →  1:N vers contracts\n"
+    "                 \u2192 1:N contracts\n"
     "contracts      : content_hash SHA-256, is_signed, signed_at, signature_hash, pdf_path\n"
-    "                 →  N:1 vers assignments\n"
     "audit_logs     : action, table_name, record_id, old_values JSON, new_values JSON, ip_address\n"
-    "                 →  N:1 vers users\n"
-    "sessions       : token_hash = SHA-256(secrets.token_hex(32)), expires_at = now + 8h\n"
-    "                 →  N:1 vers users",
-    sz_c=7.2, ld_c=9)
+    "sessions       : token_hash = SHA-256(secrets.token_hex(32)), expires_at = now + 8h",
+    fn="AU", sz=7.2, ld=9)
 
 TC(c, 289, "2", fn="Helvetica", sz=8)
 c.showPage()
@@ -440,14 +453,14 @@ draw_rect(c, LM, 10, TW, 10, lw=1.0, fill=colors.Color(0.92,0.92,0.92))
 T(c, LM + 3*mm, 17, "BTS SERVICES INFORMATIQUES AUX ORGANISATIONS",
   fn="Helvetica-Bold", sz=9)
 TR(c, RM - 3*mm, 17, "SESSION 2026", fn="Helvetica-Bold", sz=9)
-T(c, LM, 23.5, "ANNEXE VII-1-B — CAMARA Ibrahim — N° 2545812845 — (suite page 4 / données de test)", sz=8)
+T(c, LM, 23.5, "ANNEXE VII-1-B — CAMARA Ibrahim — N° 2545812845 — (suite page 4)", sz=8)
 hl(c, 26, lw=0.6)
 
 labeled_box(c, 26, 120,
-    "Données de test — [SOCIÉTÉ TEST] CleanPro Services (société de nettoyage fictive)",
+    "Données de test — CleanPro Services (société de nettoyage fictive)",
     "Objectif : valider l'application sur un cas métier réaliste avant la présentation.\n"
     "\n"
-    "Société      : [SOCIÉTÉ TEST] CleanPro Services\n"
+    "Société      : CleanPro Services\n"
     "               SIRET : 732 829 320 00074 — 12 rue des Lilas, Paris 13e\n"
     "\n"
     "Utilisateurs (5) :\n"
@@ -479,13 +492,13 @@ labeled_box(c, 26, 120,
 
 # Identifiants de connexion
 labeled_box(c, 146, 40,
-    "Identifiants de connexion (données de test)",
-    "Super Admin  :  superadmin@gestres.test    /  SuperAdmin1!\n"
-    "Admin        :  responsable@cleanpro.test  /  Responsable1!\n"
-    "Employé 1    :  employe1@cleanpro.test     /  Employe001!\n"
-    "Employé 2    :  employe2@cleanpro.test     /  Employe002!\n"
-    "Employé 3    :  employe3@cleanpro.test     /  Employe003!\n"
-    "Employé 4    :  employe4@cleanpro.test     /  Employe004!",
+    "Identifiants de connexion",
+    "Super Admin  :  superadmin@gestres.fr    /  SuperAdmin1!\n"
+    "Admin        :  responsable@cleanpro.fr  /  Responsable1!\n"
+    "Employé 1    :  employe1@cleanpro.fr     /  Employe001!\n"
+    "Employé 2    :  employe2@cleanpro.fr     /  Employe002!\n"
+    "Employé 3    :  employe3@cleanpro.fr     /  Employe003!\n"
+    "Employé 4    :  employe4@cleanpro.fr     /  Employe004!",
     sz_c=8, ld_c=10.5)
 
 TC(c, 289, "4", fn="Helvetica", sz=8)
@@ -494,18 +507,10 @@ c.showPage()
 # ════════════════════════════════════════════════════════════════════════════
 # PAGE 5 — Capture d'écran
 # ════════════════════════════════════════════════════════════════════════════
-import fitz as _fitz
-_src = _fitz.open(os.path.join(DOCS, "newannex.pdf"))
-# Chercher la page avec la capture (dernière page)
-_sc_page = _src[_src.page_count - 1]
-_sc_pix  = _sc_page.get_pixmap(matrix=_fitz.Matrix(1.5, 1.5), alpha=False)
-_sc_bytes = _sc_pix.tobytes("png")
-_src.close()
-
-c.drawImage.__doc__  # check available
 from reportlab.lib.utils import ImageReader
-from io import BytesIO
-_img_reader = ImageReader(BytesIO(_sc_bytes))
+_img_reader = ImageReader(
+    "/Users/camaraibrahim/PycharmProjects/PythonProject/docs/"
+    "Capture d\u2019\u00e9cran 2026-03-24 \u00e0 11.56.36.png")
 c.drawImage(_img_reader, 0, 0, W, H, preserveAspectRatio=True, anchor='c')
 
 # En-tête léger

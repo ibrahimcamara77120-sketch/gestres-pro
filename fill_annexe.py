@@ -84,7 +84,7 @@ rc7 = TB(p1, 52, 452, 543, 596,
          "Outils : Git / GitHub · PyCharm Professional (IDE) · VS Code.\n"
          "Matériel : MacBook Pro — macOS Sequoia 15.1 — développement local, "
          "base SQLite fichier (database.db).\n"
-         "Documentation : CLAUDE.md · FEATURES.md · INSTALLATION.md "
+         "Documentation : FEATURES.md · INSTALLATION.md "
          "· docs/rapport_tests.md · docs/tableau_synthese_e5.xlsx.",
          size=8.4)
 if rc7 < 0:
@@ -94,9 +94,9 @@ rc8 = TB(p1, 52, 612, 543, 655,
          "Dépôt GitHub : github.com/camaraibrahim/gestres-pro "
          "(code source, tests, documentation).\n"
          "Portfolio : https://ib-camara.vercel.app/\n"
-         "Données de test : seed_test_company.py — [SOCIÉTÉ TEST] CleanPro Services "
-         "· superadmin@gestres.test / SuperAdmin1! "
-         "· responsable@cleanpro.test / Responsable1!",
+         "Données de test : seed_test_company.py — CleanPro Services "
+         "· superadmin@gestres.fr / SuperAdmin1! "
+         "· responsable@cleanpro.fr / Responsable1!",
          size=7.6)
 if rc8 < 0:
     print(f"  Modalités d'accès : débordement ({rc8:.0f} pt)")
@@ -143,7 +143,7 @@ rc2 = TB(p2, 52, 153, 543, 677,
          "h) Tests automatisés : 155 tests pytest, base SQLite en mémoire isolée "
          "(conftest.py autouse), jamais d'impact sur la base de production.\n\n"
 
-         "Données de test — [SOCIÉTÉ TEST] CleanPro Services\n"
+         "Données de test — CleanPro Services\n"
          "Société fictive de nettoyage professionnel (SIRET 73282932000074) "
          "générée via seed_test_company.py.\n"
          "• 5 utilisateurs (1 admin + 4 employés) · 7 types de ressources "

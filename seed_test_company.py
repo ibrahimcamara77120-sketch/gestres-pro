@@ -42,9 +42,9 @@ def run():
 
     auth.login("superadmin@gestres.test", "SuperAdmin1!")
 
-    sep("2. Création de la société test")
+    sep("2. Création de la société")
     ok_flag, msg, company_id = company_controller.create_company(
-        name="[SOCIÉTÉ TEST] CleanPro Services",
+        name="CleanPro Services",
         siret="73282932000074",
         address="12 rue des Lilas, 75013 Paris"
     )
@@ -242,7 +242,7 @@ def run():
                 "3. Tout dommage ou perte doit être signalé immédiatement au responsable d'agence.\n"
                 "4. La ressource doit être restituée propre et en bon état en fin de mission."
             ),
-            notes="[SOCIÉTÉ TEST] — Contrat généré automatiquement dans le cadre de la démonstration GestRes Pro."
+            notes="Contrat généré automatiquement dans le cadre de la démonstration GestRes Pro."
         )
         if ok_flag:
             ok(f"Contrat généré  → ID {cid}")
@@ -256,7 +256,7 @@ def run():
 
     sep("RÉSUMÉ FINAL")
     stats = company_controller.get_company_stats(company_id)
-    info(f"Société      : [SOCIÉTÉ TEST] CleanPro Services")
+    info(f"Société      : CleanPro Services")
     info(f"Utilisateurs : {stats['users_count']} actifs")
     info(f"Ressources   : {stats['resources_count']} enregistrées  ({stats['available_resources']} disponibles)")
     info(f"Affectations : {len(assignment_ids)} actives")
