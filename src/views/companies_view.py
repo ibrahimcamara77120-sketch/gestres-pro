@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QDialog, QFormLayout,
-    QLabel, QLineEdit, QPushButton, QMessageBox
+    QLabel, QLineEdit, QPushButton, QMessageBox, QFrame
 )
 from PySide6.QtCore import Qt
 
@@ -111,29 +111,41 @@ class CompaniesView(QWidget):
         self.load_data()
 
     def _setup_ui(self):
+        from src.views.users_view import _page_header
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        title = QLabel("Entreprises")
-        title.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {COLORS['text_primary']}; background: transparent;")
-        layout.addWidget(title)
+        layout.addWidget(_page_header("🏢  Gestion des entreprises",
+                                      "Espaces clients, organisations et espaces cloisonnés"))
+
+        inner = QWidget()
+        inner.setStyleSheet(f"background-color: {COLORS['background']};")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(30, 24, 30, 24)
+        inner_layout.setSpacing(0)
 
         columns = [
-            {"key": "name", "label": "Nom"},
-            {"key": "siret_formatted", "label": "SIRET"},
-            {"key": "address", "label": "Adresse"},
-            {"key": "users_count", "label": "Utilisateurs", "width": 120},
-            {"key": "resources_count", "label": "Ressources", "width": 120},
-            {"key": "status", "label": "Statut", "width": 100,
-             "style": lambda v, r: {"color": COLORS["success"] if r.get("is_active") else COLORS["danger"]}},
+            {"key": "name",           "label": "🏢  Nom"},
+            {"key": "siret_formatted","label": "🔢  SIRET"},
+            {"key": "address",        "label": "📍  Adresse"},
+            {"key": "users_count",    "label": "👥  Utilisateurs", "width": 130},
+            {"key": "resources_count","label": "🖥️  Ressources",   "width": 120},
+            {"key": "status",         "label": "Statut",            "width": 110},
         ]
 
         self.table = DataTable(columns, title="Liste des entreprises", page_size=15)
+
+        # Filter: active/inactive
+        self.table.add_filter("Affichage", [
+            ("Actives uniquement", "Active"),
+            ("Toutes (inc. inactives)", None),
+        ], "status")
+
         self.table.set_actions([
-            {"name": "edit", "icon": "✏️", "label": "Modifier", "color": COLORS["primary"]},
-            {"name": "stats", "icon": "📊", "label": "Statistiques", "color": COLORS["info"]},
-            {"name": "toggle", "icon": "🔄", "label": "Activer/Désactiver", "color": COLORS["secondary"]},
+            {"name": "edit",   "icon": "✏️",  "label": "Modifier",            "color": COLORS["primary"]},
+            {"name": "stats",  "icon": "📊",  "label": "Statistiques",         "color": COLORS["info"]},
+            {"name": "toggle", "icon": "🔄",  "label": "Activer/Désactiver",   "color": COLORS["secondary"]},
         ])
 
         is_super = auth_controller.is_super_admin()
@@ -143,12 +155,25 @@ class CompaniesView(QWidget):
         self.table.refresh_clicked.connect(self.load_data)
         self.table.action_triggered.connect(self._on_action)
 
-        layout.addWidget(self.table)
+        inner_layout.addWidget(self.table)
+        layout.addWidget(inner)
 
     def load_data(self):
         try:
             companies = company_controller.get_all_companies(include_inactive=True)
             self.table.set_data(companies)
+            # Status badges — col 5
+            for row_idx in range(self.table.table.rowCount()):
+                start = (self.table._current_page - 1) * self.table._page_size
+                idx = start + row_idx
+                if idx < len(self.table._filtered_data):
+                    is_active = self.table._filtered_data[idx].get("is_active", True)
+                    if is_active:
+                        self.table.set_status_badge(row_idx, 5, "Active",
+                                                    COLORS["success_dark"], COLORS["success_light"])
+                    else:
+                        self.table.set_status_badge(row_idx, 5, "Inactive",
+                                                    COLORS["danger_dark"], COLORS["danger_light"])
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les entreprises : {e}")
 

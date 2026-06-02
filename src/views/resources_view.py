@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QDialog, QFormLayout,
-    QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox, QTextEdit
+    QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox, QTextEdit, QFrame
 )
 from PySide6.QtCore import Qt
 
@@ -159,6 +159,31 @@ class ResourceFormDialog(QDialog):
             self.error_label.show()
 
 
+class _StatusMiniCard(QFrame):
+    def __init__(self, label: str, value: str, text_color: str, bg_color: str, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: {bg_color};
+                border-radius: 10px;
+                border: 1.5px solid {text_color}30;
+            }}
+        """)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(14, 10, 14, 10)
+        lay.setSpacing(10)
+        self._val = QLabel(value)
+        self._val.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {text_color}; background: transparent;")
+        lay.addWidget(self._val)
+        lbl = QLabel(label)
+        lbl.setStyleSheet(f"font-size: 12px; font-weight: 600; color: {text_color}; background: transparent;")
+        lay.addWidget(lbl)
+        lay.addStretch()
+
+    def set_value(self, v: str):
+        self._val.setText(v)
+
+
 class ResourcesView(QWidget):
 
     def __init__(self, parent=None):
@@ -167,58 +192,101 @@ class ResourcesView(QWidget):
         self.load_data()
 
     def _setup_ui(self):
+        from src.views.users_view import _page_header
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        header = QHBoxLayout()
-        title = QLabel("Ressources")
-        title.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {COLORS['text_primary']}; background: transparent;")
-        header.addWidget(title)
+        layout.addWidget(_page_header("🖥️  Gestion des ressources",
+                                      "Matériel, logiciels et équipements de l'entreprise"))
 
-        header.addStretch()
+        inner = QWidget()
+        inner.setStyleSheet(f"background-color: {COLORS['background']};")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(30, 20, 30, 24)
+        inner_layout.setSpacing(16)
 
-        filter_label = QLabel("Statut :")
-        filter_label.setStyleSheet(f"color: {COLORS['text_secondary']}; background: transparent;")
-        header.addWidget(filter_label)
+        # Status mini-cards row
+        cards_row = QHBoxLayout()
+        cards_row.setSpacing(12)
+        self._card_available  = _StatusMiniCard("Disponibles",  "0", COLORS["success_dark"],  COLORS["success_light"])
+        self._card_assigned   = _StatusMiniCard("Affectées",    "0", COLORS["info"],           COLORS["info_light"])
+        self._card_maintenance= _StatusMiniCard("Maintenance",  "0", COLORS["warning_dark"],   COLORS["warning_light"])
+        self._card_retired    = _StatusMiniCard("Retirées",     "0", COLORS["text_muted"],      COLORS["border_light"])
+        for c in [self._card_available, self._card_assigned, self._card_maintenance, self._card_retired]:
+            cards_row.addWidget(c)
+        cards_row.addStretch()
+        inner_layout.addLayout(cards_row)
 
-        self.status_filter = QComboBox()
-        self.status_filter.setFixedWidth(160)
-        self.status_filter.addItem("Tous les statuts", None)
-        for key, label in config.RESOURCE_STATUS.items():
-            self.status_filter.addItem(label, key)
-        self.status_filter.currentIndexChanged.connect(self.load_data)
-        header.addWidget(self.status_filter)
-
-        layout.addLayout(header)
-
+        # Table
         columns = [
-            {"key": "name", "label": "Nom"},
-            {"key": "resource_type_name", "label": "Type"},
-            {"key": "serial_number", "label": "N° de série"},
-            {"key": "company_name", "label": "Entreprise"},
-            {"key": "status_label", "label": "Statut", "width": 130,
-             "style": lambda v, r: {"color": r.get("status_color", COLORS["secondary"])}},
-            {"key": "created_at", "label": "Ajouté le", "width": 120},
+            {"key": "name",             "label": "🖥️  Nom"},
+            {"key": "resource_type_name","label": "📂  Type"},
+            {"key": "serial_number",    "label": "🔢  N° de série"},
+            {"key": "company_name",     "label": "🏢  Entreprise"},
+            {"key": "status_label",     "label": "Statut", "width": 130},
+            {"key": "created_at",       "label": "📅  Ajouté le", "width": 120},
         ]
 
         self.table = DataTable(columns, title="Parc de ressources", page_size=15)
+
+        # Filters
+        companies = company_controller.get_all_companies()
+        company_opts = [("Toutes les entreprises", None)] + [(c["name"], str(c["id"])) for c in companies]
+        self.table.add_filter("Entreprise", company_opts, "company_id")
+        self.table.add_filter("Statut", [
+            ("Tous les statuts", None),
+            ("Disponible",  "available"),
+            ("Affectée",    "assigned"),
+            ("Maintenance", "maintenance"),
+            ("Retirée",     "retired"),
+        ], "status")
+
         self.table.set_actions([
-            {"name": "edit", "icon": "✏️", "label": "Modifier", "color": COLORS["primary"]},
-            {"name": "retire", "icon": "🗑️", "label": "Retirer", "color": COLORS["danger"]},
+            {"name": "edit",   "icon": "✏️",  "label": "Modifier", "color": COLORS["primary"]},
+            {"name": "retire", "icon": "🗑️", "label": "Retirer",  "color": COLORS["danger"]},
         ])
 
         self.table.add_clicked.connect(self._on_add)
         self.table.refresh_clicked.connect(self.load_data)
         self.table.action_triggered.connect(self._on_action)
 
-        layout.addWidget(self.table)
+        inner_layout.addWidget(self.table)
+        layout.addWidget(inner)
+
+    # Badge colors per status
+    _BADGE = {
+        "available":   (COLORS["success_dark"],  COLORS["success_light"],  "Disponible"),
+        "assigned":    (COLORS["info"],           COLORS["info_light"],     "Affectée"),
+        "maintenance": (COLORS["warning_dark"],   COLORS["warning_light"],  "Maintenance"),
+        "retired":     (COLORS["text_muted"],      COLORS["border_light"],   "Retirée"),
+    }
 
     def load_data(self):
         try:
-            status = self.status_filter.currentData()
-            resources = resource_controller.get_all_resources(status=status)
+            resources = resource_controller.get_all_resources()
             self.table.set_data(resources)
+
+            # Update mini-cards
+            counts = {"available": 0, "assigned": 0, "maintenance": 0, "retired": 0}
+            for r in resources:
+                s = r.get("status", "")
+                if s in counts:
+                    counts[s] += 1
+            self._card_available.set_value(str(counts["available"]))
+            self._card_assigned.set_value(str(counts["assigned"]))
+            self._card_maintenance.set_value(str(counts["maintenance"]))
+            self._card_retired.set_value(str(counts["retired"]))
+
+            # Status badges — column index 4
+            for row_idx in range(self.table.table.rowCount()):
+                start = (self.table._current_page - 1) * self.table._page_size
+                idx = start + row_idx
+                if idx < len(self.table._filtered_data):
+                    status = self.table._filtered_data[idx].get("status", "")
+                    if status in self._BADGE:
+                        tc, bc, label = self._BADGE[status]
+                        self.table.set_status_badge(row_idx, 4, label, tc, bc)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les ressources : {e}")
 

@@ -6,8 +6,29 @@ from src.models.base import Base, get_session, engine
 from src.models.user import User, Role
 from src.models.company import Company
 from src.controllers.auth_controller import AuthController
+from src.controllers.auth_controller import auth_controller as global_auth
 from src.controllers.user_controller import UserController
 from src.controllers.company_controller import CompanyController
+from src.utils.security import hash_password
+
+
+@pytest.fixture
+def logged_in_super_admin(db_session):
+    """Connecte le singleton global auth_controller en tant que super_admin."""
+    role = db_session.query(Role).filter_by(name="super_admin").first()
+    user = User(
+        email="sa_fixture@test.com",
+        password_hash=hash_password("SuperAdmin123!"),
+        first_name="Super", last_name="Admin",
+        role_id=role.id, is_active=True
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    global_auth.login("sa_fixture@test.com", "SuperAdmin123!")
+    yield
+    global_auth._current_user = None
+    global_auth._session_token = None
 
 
 @pytest.fixture(scope="function")
@@ -336,12 +357,13 @@ class TestAuthController:
 
 class TestUserController:
 
-    def test_get_all_users_empty(self, db_session, user_controller):
+    def test_get_all_users_empty(self, db_session, logged_in_super_admin, user_controller):
         users = user_controller.get_all_users()
         assert isinstance(users, list)
-        assert len(users) == 0
+        # le fixture logged_in_super_admin crée 1 utilisateur
+        assert len(users) == 1
 
-    def test_create_user_success(self, db_session, user_controller):
+    def test_create_user_success(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         success, msg, user_id = user_controller.create_user(
@@ -356,7 +378,7 @@ class TestUserController:
         assert user_id is not None
         assert isinstance(user_id, int)
 
-    def test_create_user_invalid_email(self, db_session, user_controller):
+    def test_create_user_invalid_email(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         success, msg, user_id = user_controller.create_user(
@@ -370,7 +392,7 @@ class TestUserController:
         assert success is False
         assert user_id is None
 
-    def test_create_user_duplicate_email(self, db_session, user_controller):
+    def test_create_user_duplicate_email(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         user_controller.create_user(
@@ -392,7 +414,7 @@ class TestUserController:
         assert success is False
         assert "utilisé" in msg.lower()
 
-    def test_create_user_invalid_role(self, db_session, user_controller):
+    def test_create_user_invalid_role(self, db_session, logged_in_super_admin, user_controller):
         success, msg, user_id = user_controller.create_user(
             email="x@example.com",
             password="SecurePass123!",
@@ -404,7 +426,7 @@ class TestUserController:
         assert success is False
         assert "rôle" in msg.lower()
 
-    def test_get_all_users_after_create(self, db_session, user_controller):
+    def test_get_all_users_after_create(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         user_controller.create_user(
@@ -416,10 +438,10 @@ class TestUserController:
         )
 
         users = user_controller.get_all_users()
-        assert len(users) == 1
-        assert users[0]["email"] == "alice@example.com"
+        emails = [u["email"] for u in users]
+        assert "alice@example.com" in emails
 
-    def test_get_user_by_id(self, db_session, user_controller):
+    def test_get_user_by_id(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         _, _, user_id = user_controller.create_user(
@@ -435,11 +457,11 @@ class TestUserController:
         assert user_data["email"] == "bob@example.com"
         assert user_data["first_name"] == "Bob"
 
-    def test_get_user_by_id_not_found(self, db_session, user_controller):
+    def test_get_user_by_id_not_found(self, db_session, logged_in_super_admin, user_controller):
         result = user_controller.get_user_by_id(9999)
         assert result is None
 
-    def test_update_user_name(self, db_session, user_controller):
+    def test_update_user_name(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         _, _, user_id = user_controller.create_user(
@@ -456,12 +478,12 @@ class TestUserController:
         user_data = user_controller.get_user_by_id(user_id)
         assert user_data["last_name"] == "New"
 
-    def test_update_user_not_found(self, db_session, user_controller):
+    def test_update_user_not_found(self, db_session, logged_in_super_admin, user_controller):
         success, msg = user_controller.update_user(9999, first_name="Nobody")
         assert success is False
         assert "trouvé" in msg.lower()
 
-    def test_update_user_invalid_email(self, db_session, user_controller):
+    def test_update_user_invalid_email(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         _, _, user_id = user_controller.create_user(
@@ -475,7 +497,7 @@ class TestUserController:
         success, msg = user_controller.update_user(user_id, email="bad-email")
         assert success is False
 
-    def test_delete_user(self, db_session, user_controller):
+    def test_delete_user(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         _, _, user_id = user_controller.create_user(
@@ -492,12 +514,12 @@ class TestUserController:
         user_data = user_controller.get_user_by_id(user_id)
         assert user_data["is_active"] is False
 
-    def test_delete_user_not_found(self, db_session, user_controller):
+    def test_delete_user_not_found(self, db_session, logged_in_super_admin, user_controller):
         success, msg = user_controller.delete_user(9999)
         assert success is False
         assert "trouvé" in msg.lower()
 
-    def test_reset_password_success(self, db_session, user_controller):
+    def test_reset_password_success(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         _, _, user_id = user_controller.create_user(
@@ -511,7 +533,7 @@ class TestUserController:
         success, msg = user_controller.reset_password(user_id, "NewPass456!")
         assert success is True
 
-    def test_reset_password_weak(self, db_session, user_controller):
+    def test_reset_password_weak(self, db_session, logged_in_super_admin, user_controller):
         role = db_session.query(Role).filter_by(name="employee").first()
 
         _, _, user_id = user_controller.create_user(
@@ -525,11 +547,11 @@ class TestUserController:
         success, msg = user_controller.reset_password(user_id, "weak")
         assert success is False
 
-    def test_reset_password_user_not_found(self, db_session, user_controller):
+    def test_reset_password_user_not_found(self, db_session, logged_in_super_admin, user_controller):
         success, msg = user_controller.reset_password(9999, "NewPass456!")
         assert success is False
 
-    def test_get_all_roles(self, db_session, user_controller):
+    def test_get_all_roles(self, db_session, logged_in_super_admin, user_controller):
         roles = user_controller.get_all_roles()
         assert len(roles) == 3
         role_names = [r["name"] for r in roles]
@@ -537,7 +559,7 @@ class TestUserController:
         assert "admin" in role_names
         assert "employee" in role_names
 
-    def test_get_users_by_company(self, db_session, user_controller):
+    def test_get_users_by_company(self, db_session, logged_in_super_admin, user_controller):
         company = Company(name="Corp A")
         db_session.add(company)
         db_session.commit()
@@ -567,7 +589,7 @@ class TestUserController:
 
 class TestCompanyController:
 
-    def test_create_company_success(self, db_session, company_controller):
+    def test_create_company_success(self, db_session, logged_in_super_admin, company_controller):
         success, msg, company_id = company_controller.create_company(
             name="Test Corp",
             address="10 rue de la Paix"
@@ -576,7 +598,7 @@ class TestCompanyController:
         assert success is True
         assert company_id is not None
 
-    def test_create_company_with_siret(self, db_session, company_controller):
+    def test_create_company_with_siret(self, db_session, logged_in_super_admin, company_controller):
         success, msg, company_id = company_controller.create_company(
             name="Corp SIRET",
             siret="73282932000074"
@@ -584,7 +606,7 @@ class TestCompanyController:
 
         assert success is True
 
-    def test_create_company_invalid_siret(self, db_session, company_controller):
+    def test_create_company_invalid_siret(self, db_session, logged_in_super_admin, company_controller):
         success, msg, company_id = company_controller.create_company(
             name="Bad SIRET Corp",
             siret="11111111111111"
@@ -593,13 +615,13 @@ class TestCompanyController:
         assert success is False
         assert "siret" in msg.lower()
 
-    def test_create_company_short_name(self, db_session, company_controller):
+    def test_create_company_short_name(self, db_session, logged_in_super_admin, company_controller):
         success, msg, company_id = company_controller.create_company(name="A")
 
         assert success is False
         assert company_id is None
 
-    def test_create_company_duplicate_siret(self, db_session, company_controller):
+    def test_create_company_duplicate_siret(self, db_session, logged_in_super_admin, company_controller):
         company_controller.create_company(name="Corp 1", siret="73282932000074")
 
         success, msg, company_id = company_controller.create_company(
@@ -610,19 +632,19 @@ class TestCompanyController:
         assert success is False
         assert "siret" in msg.lower()
 
-    def test_get_all_companies_empty(self, db_session, company_controller):
+    def test_get_all_companies_empty(self, db_session, logged_in_super_admin, company_controller):
         companies = company_controller.get_all_companies()
         assert isinstance(companies, list)
         assert len(companies) == 0
 
-    def test_get_all_companies(self, db_session, company_controller):
+    def test_get_all_companies(self, db_session, logged_in_super_admin, company_controller):
         company_controller.create_company(name="Company A")
         company_controller.create_company(name="Company B")
 
         companies = company_controller.get_all_companies()
         assert len(companies) == 2
 
-    def test_get_company_by_id(self, db_session, company_controller):
+    def test_get_company_by_id(self, db_session, logged_in_super_admin, company_controller):
         _, _, company_id = company_controller.create_company(
             name="Lookup Corp",
             address="5 avenue Test"
@@ -632,11 +654,11 @@ class TestCompanyController:
         assert data is not None
         assert data["name"] == "Lookup Corp"
 
-    def test_get_company_by_id_not_found(self, db_session, company_controller):
+    def test_get_company_by_id_not_found(self, db_session, logged_in_super_admin, company_controller):
         result = company_controller.get_company_by_id(9999)
         assert result is None
 
-    def test_update_company_name(self, db_session, company_controller):
+    def test_update_company_name(self, db_session, logged_in_super_admin, company_controller):
         _, _, company_id = company_controller.create_company(name="Old Name")
 
         success, msg = company_controller.update_company(company_id, name="New Name")
@@ -645,18 +667,18 @@ class TestCompanyController:
         data = company_controller.get_company_by_id(company_id)
         assert data["name"] == "New Name"
 
-    def test_update_company_not_found(self, db_session, company_controller):
+    def test_update_company_not_found(self, db_session, logged_in_super_admin, company_controller):
         success, msg = company_controller.update_company(9999, name="Nowhere")
         assert success is False
         assert "trouvée" in msg.lower()
 
-    def test_update_company_invalid_siret(self, db_session, company_controller):
+    def test_update_company_invalid_siret(self, db_session, logged_in_super_admin, company_controller):
         _, _, company_id = company_controller.create_company(name="Corp Test")
 
         success, msg = company_controller.update_company(company_id, siret="11111111111111")
         assert success is False
 
-    def test_delete_company_success(self, db_session, company_controller):
+    def test_delete_company_success(self, db_session, logged_in_super_admin, company_controller):
         _, _, company_id = company_controller.create_company(name="To Delete")
 
         success, msg = company_controller.delete_company(company_id)
@@ -665,7 +687,7 @@ class TestCompanyController:
         data = company_controller.get_company_by_id(company_id)
         assert data["is_active"] is False
 
-    def test_delete_company_with_active_users(self, db_session, company_controller, user_controller):
+    def test_delete_company_with_active_users(self, db_session, logged_in_super_admin, company_controller, user_controller):
         _, _, company_id = company_controller.create_company(name="Has Users")
 
         role = db_session.query(Role).filter_by(name="employee").first()
@@ -682,11 +704,11 @@ class TestCompanyController:
         assert success is False
         assert "utilisateur" in msg.lower()
 
-    def test_delete_company_not_found(self, db_session, company_controller):
+    def test_delete_company_not_found(self, db_session, logged_in_super_admin, company_controller):
         success, msg = company_controller.delete_company(9999)
         assert success is False
 
-    def test_get_company_stats(self, db_session, company_controller):
+    def test_get_company_stats(self, db_session, logged_in_super_admin, company_controller):
         _, _, company_id = company_controller.create_company(name="Stats Corp")
 
         stats = company_controller.get_company_stats(company_id)
@@ -695,7 +717,7 @@ class TestCompanyController:
         assert "available_resources" in stats
         assert stats["users_count"] == 0
 
-    def test_get_all_companies_excludes_inactive(self, db_session, company_controller):
+    def test_get_all_companies_excludes_inactive(self, db_session, logged_in_super_admin, company_controller):
         company_controller.create_company(name="Active Corp")
         _, _, cid = company_controller.create_company(name="Will Deactivate")
         company_controller.delete_company(cid)

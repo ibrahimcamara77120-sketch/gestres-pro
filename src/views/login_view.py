@@ -1,13 +1,27 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QFrame, QSpacerItem,
-    QSizePolicy, QGraphicsDropShadowEffect
+    QLineEdit, QPushButton, QFrame, QSizePolicy,
+    QGraphicsDropShadowEffect
 )
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPainter, QLinearGradient, QBrush
 
 from src.controllers.auth_controller import auth_controller
 from src.views.styles import COLORS, primary_button_style
+
+
+class GradientBackground(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        gradient = QLinearGradient(0, 0, self.width(), self.height())
+        gradient.setColorAt(0.0, QColor("#1e1b4b"))
+        gradient.setColorAt(0.5, QColor("#312e81"))
+        gradient.setColorAt(1.0, QColor("#4c1d95"))
+        painter.fillRect(self.rect(), QBrush(gradient))
 
 
 class LoginView(QWidget):
@@ -19,116 +33,141 @@ class LoginView(QWidget):
         self._connect_signals()
 
     def _setup_ui(self):
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['sidebar_bg']};
-            }}
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        # Fond dégradé
+        self._bg = GradientBackground(self)
+        outer_layout.addWidget(self._bg)
+
+        # Centrage horizontal + vertical dans le fond dégradé
+        center_h = QHBoxLayout(self._bg)
+        center_h.setContentsMargins(0, 0, 0, 0)
+        center_h.addStretch(1)
+
+        center_v = QVBoxLayout()
+        center_v.setContentsMargins(0, 0, 0, 0)
+        center_h.addLayout(center_v)
+        center_h.addStretch(1)
+
+        center_v.addStretch(1)
+
+        # Carte de connexion
+        card = QFrame()
+        card.setFixedWidth(420)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.97);
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
         """)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(60)
+        shadow.setXOffset(0)
+        shadow.setYOffset(20)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        card.setGraphicsEffect(shadow)
 
-        center_layout = QHBoxLayout()
-        layout.addLayout(center_layout)
-        center_layout.addStretch()
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(44, 48, 44, 48)
+        card_layout.setSpacing(0)
 
-        container = QFrame()
-        container.setFixedWidth(400)
-        container.setStyleSheet(f"""
-            QFrame {{
-                background-color: {COLORS['white']};
-                border-radius: 8px;
-                border: 1px solid {COLORS['border']};
-            }}
-        """)
-
-
-        container_layout = QVBoxLayout(container)
-        container_layout.setContentsMargins(40, 50, 40, 50)
-        container_layout.setSpacing(0)
-
-        logo_label = QLabel("GR")
-        logo_label.setFixedSize(52, 52)
-        logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_label.setStyleSheet(f"""
-            background-color: {COLORS['primary']};
+        # Logo
+        logo_row = QHBoxLayout()
+        logo_row.addStretch()
+        logo = QLabel("GR")
+        logo.setFixedSize(56, 56)
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setStyleSheet(f"""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 {COLORS['primary']}, stop:1 #8b5cf6);
             color: white;
-            border-radius: 6px;
-            font-size: 20px;
-            font-weight: bold;
+            border-radius: 14px;
+            font-size: 22px;
+            font-weight: 800;
         """)
-        logo_wrapper = QHBoxLayout()
-        logo_wrapper.addStretch()
-        logo_wrapper.addWidget(logo_label)
-        logo_wrapper.addStretch()
-        container_layout.addLayout(logo_wrapper)
+        logo_row.addWidget(logo)
+        logo_row.addStretch()
+        card_layout.addLayout(logo_row)
 
-        container_layout.addSpacing(16)
+        card_layout.addSpacing(24)
 
-        title = QLabel("Connexion")
+        # Titre
+        title = QLabel("Bienvenue")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(f"""
-            font-size: 28px;
-            font-weight: bold;
+            font-size: 30px;
+            font-weight: 800;
             color: {COLORS['text_primary']};
             background: transparent;
+            letter-spacing: -0.5px;
         """)
-        container_layout.addWidget(title)
+        card_layout.addWidget(title)
 
-        subtitle = QLabel("Gestionnaire de Ressources d'Entreprise")
+        subtitle = QLabel("Connectez-vous à GestRes Pro")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setStyleSheet(f"""
             font-size: 14px;
-            color: {COLORS['text_secondary']};
+            color: {COLORS['text_muted']};
             background: transparent;
-            margin-top: 8px;
+            margin-top: 6px;
         """)
-        container_layout.addWidget(subtitle)
+        card_layout.addWidget(subtitle)
 
-        container_layout.addSpacing(35)
+        card_layout.addSpacing(36)
 
+        # Email
         email_label = QLabel("Adresse email")
         email_label.setStyleSheet(f"""
             font-size: 13px;
             font-weight: 600;
-            color: {COLORS['text_primary']};
+            color: {COLORS['text_secondary']};
             background: transparent;
             margin-bottom: 6px;
         """)
-        container_layout.addWidget(email_label)
+        card_layout.addWidget(email_label)
+
+        card_layout.addSpacing(6)
 
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("vous@exemple.com")
         self.email_input.setMinimumHeight(48)
         self.email_input.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {COLORS['white']};
+                background-color: {COLORS['surface_raised']};
                 color: {COLORS['text_primary']};
-                border: 2px solid {COLORS['border']};
+                border: 1.5px solid {COLORS['border']};
                 border-radius: 10px;
                 padding: 12px 16px;
                 font-size: 15px;
             }}
             QLineEdit:focus {{
-                border-color: {COLORS['primary']};
+                border: 2px solid {COLORS['primary']};
+                background-color: {COLORS['white']};
             }}
             QLineEdit::placeholder {{
                 color: {COLORS['text_muted']};
             }}
         """)
-        container_layout.addWidget(self.email_input)
+        card_layout.addWidget(self.email_input)
 
-        container_layout.addSpacing(20)
+        card_layout.addSpacing(20)
 
-        password_label = QLabel("Mot de passe")
-        password_label.setStyleSheet(f"""
+        # Mot de passe
+        pwd_label = QLabel("Mot de passe")
+        pwd_label.setStyleSheet(f"""
             font-size: 13px;
             font-weight: 600;
-            color: {COLORS['text_primary']};
+            color: {COLORS['text_secondary']};
             background: transparent;
             margin-bottom: 6px;
         """)
-        container_layout.addWidget(password_label)
+        card_layout.addWidget(pwd_label)
+
+        card_layout.addSpacing(6)
 
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Votre mot de passe")
@@ -136,77 +175,86 @@ class LoginView(QWidget):
         self.password_input.setMinimumHeight(48)
         self.password_input.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {COLORS['white']};
+                background-color: {COLORS['surface_raised']};
                 color: {COLORS['text_primary']};
-                border: 2px solid {COLORS['border']};
+                border: 1.5px solid {COLORS['border']};
                 border-radius: 10px;
                 padding: 12px 16px;
                 font-size: 15px;
             }}
             QLineEdit:focus {{
-                border-color: {COLORS['primary']};
+                border: 2px solid {COLORS['primary']};
+                background-color: {COLORS['white']};
             }}
             QLineEdit::placeholder {{
                 color: {COLORS['text_muted']};
             }}
         """)
-        container_layout.addWidget(self.password_input)
+        card_layout.addWidget(self.password_input)
 
-        container_layout.addSpacing(12)
+        card_layout.addSpacing(12)
 
+        # Erreur
         self.error_label = QLabel("")
         self.error_label.setStyleSheet(f"""
-            color: {COLORS['danger']};
+            color: {COLORS['danger_dark']};
             font-size: 13px;
+            font-weight: 500;
             background-color: {COLORS['danger_light']};
             border-radius: 8px;
-            padding: 10px;
+            border-left: 3px solid {COLORS['danger']};
+            padding: 10px 14px;
         """)
         self.error_label.setWordWrap(True)
-        self.error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.error_label.hide()
-        container_layout.addWidget(self.error_label)
+        card_layout.addWidget(self.error_label)
 
-        container_layout.addSpacing(25)
+        card_layout.addSpacing(24)
 
+        # Bouton
         self.login_button = QPushButton("Se connecter")
         self.login_button.setMinimumHeight(52)
         self.login_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.login_button.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {COLORS['primary']}, stop:1 #8b5cf6);
                 color: white;
                 border: none;
-                border-radius: 10px;
+                border-radius: 12px;
                 font-size: 16px;
-                font-weight: 600;
+                font-weight: 700;
+                letter-spacing: 0.3px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['primary_hover']};
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {COLORS['primary_hover']}, stop:1 #7c3aed);
             }}
             QPushButton:pressed {{
-                background-color: #1e40af;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {COLORS['primary_dark']}, stop:1 #6d28d9);
             }}
             QPushButton:disabled {{
-                background-color: {COLORS['border']};
+                background: {COLORS['border']};
                 color: {COLORS['text_muted']};
             }}
         """)
-        container_layout.addWidget(self.login_button)
+        card_layout.addWidget(self.login_button)
 
-        container_layout.addSpacing(30)
+        card_layout.addSpacing(28)
 
-        footer = QLabel("Projet BTS SIO - Gestion des Ressources")
+        # Footer
+        footer = QLabel("GestRes Pro · BTS SIO SLAM 2026")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet(f"""
             font-size: 12px;
             color: {COLORS['text_muted']};
             background: transparent;
         """)
-        container_layout.addWidget(footer)
+        card_layout.addWidget(footer)
 
-        center_layout.addWidget(container)
-        center_layout.addStretch()
+        center_v.addWidget(card, 0, Qt.AlignmentFlag.AlignHCenter)
+        center_v.addStretch(1)
 
     def _connect_signals(self):
         self.login_button.clicked.connect(self._on_login_clicked)
@@ -228,7 +276,7 @@ class LoginView(QWidget):
             return
 
         self.login_button.setEnabled(False)
-        self.login_button.setText("Connexion en cours...")
+        self.login_button.setText("Connexion…")
 
         success, message = auth_controller.login(email, password)
 

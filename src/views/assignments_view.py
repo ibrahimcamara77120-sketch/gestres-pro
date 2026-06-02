@@ -2,7 +2,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QDialog, QFormLayout,
     QLabel, QPushButton, QComboBox, QMessageBox, QTextEdit,
-    QDateEdit
+    QDateEdit, QFrame
 )
 from PySide6.QtCore import Qt, QDate
 
@@ -139,65 +139,76 @@ class AssignmentFormDialog(QDialog):
 
 class AssignmentsView(QWidget):
 
+    _BADGE = {
+        "active":    (COLORS["success_dark"],  COLORS["success_light"],  "Active"),
+        "returned":  (COLORS["info"],           COLORS["info_light"],     "Retournée"),
+        "cancelled": (COLORS["danger_dark"],    COLORS["danger_light"],   "Annulée"),
+    }
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()
         self.load_data()
 
     def _setup_ui(self):
+        from src.views.users_view import _page_header
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        header = QHBoxLayout()
-        title = QLabel("Affectations")
-        title.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {COLORS['text_primary']}; background: transparent;")
-        header.addWidget(title)
+        layout.addWidget(_page_header("📋  Gestion des affectations",
+                                      "Suivi des ressources attribuées aux collaborateurs"))
 
-        header.addStretch()
-
-        filter_label = QLabel("Statut :")
-        filter_label.setStyleSheet(f"color: {COLORS['text_secondary']}; background: transparent;")
-        header.addWidget(filter_label)
-
-        self.status_filter = QComboBox()
-        self.status_filter.setFixedWidth(160)
-        self.status_filter.addItem("Tous", None)
-        for key, label in config.ASSIGNMENT_STATUS.items():
-            self.status_filter.addItem(label, key)
-        self.status_filter.currentIndexChanged.connect(self.load_data)
-        header.addWidget(self.status_filter)
-
-        layout.addLayout(header)
+        inner = QWidget()
+        inner.setStyleSheet(f"background-color: {COLORS['background']};")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(30, 24, 30, 24)
+        inner_layout.setSpacing(0)
 
         columns = [
-            {"key": "resource_name", "label": "Ressource"},
-            {"key": "user_name", "label": "Bénéficiaire"},
-            {"key": "user_email", "label": "Email"},
-            {"key": "assigner_name", "label": "Affecté par"},
-            {"key": "start_date", "label": "Début", "width": 110},
-            {"key": "end_date", "label": "Fin", "width": 110},
-            {"key": "status_label", "label": "Statut", "width": 120,
-             "style": lambda v, r: {"color": r.get("status_color", COLORS["secondary"])}},
+            {"key": "resource_name",  "label": "🖥️  Ressource"},
+            {"key": "user_name",      "label": "👤  Bénéficiaire"},
+            {"key": "user_email",     "label": "✉️  Email"},
+            {"key": "assigner_name",  "label": "🔑  Affecté par"},
+            {"key": "start_date",     "label": "📅  Début",  "width": 110},
+            {"key": "end_date",       "label": "📅  Fin",    "width": 110},
+            {"key": "status_label",   "label": "Statut",      "width": 120},
         ]
 
         self.table = DataTable(columns, title="Liste des affectations", page_size=15)
+
+        # Filter by status using DataTable's filter bar
+        self.table.add_filter("Statut", [
+            ("Toutes", None),
+            ("Active",     "active"),
+            ("Retournée",  "returned"),
+            ("Annulée",    "cancelled"),
+        ], "status")
+
         self.table.set_actions([
-            {"name": "close", "icon": "✅", "label": "Clôturer (retour)", "color": COLORS["success"]},
-            {"name": "cancel", "icon": "❌", "label": "Annuler", "color": COLORS["danger"]},
+            {"name": "close",  "icon": "✅", "label": "Clôturer (retour)", "color": COLORS["success"]},
+            {"name": "cancel", "icon": "❌", "label": "Annuler",           "color": COLORS["danger"]},
         ])
 
         self.table.add_clicked.connect(self._on_add)
         self.table.refresh_clicked.connect(self.load_data)
         self.table.action_triggered.connect(self._on_action)
 
-        layout.addWidget(self.table)
+        inner_layout.addWidget(self.table)
+        layout.addWidget(inner)
 
     def load_data(self):
         try:
-            status = self.status_filter.currentData()
-            assignments = assignment_controller.get_all_assignments(status=status)
+            assignments = assignment_controller.get_all_assignments()
             self.table.set_data(assignments)
+            for row_idx in range(self.table.table.rowCount()):
+                start = (self.table._current_page - 1) * self.table._page_size
+                idx = start + row_idx
+                if idx < len(self.table._filtered_data):
+                    status = self.table._filtered_data[idx].get("status", "")
+                    if status in self._BADGE:
+                        tc, bc, label = self._BADGE[status]
+                        self.table.set_status_badge(row_idx, 6, label, tc, bc)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les affectations : {e}")
 

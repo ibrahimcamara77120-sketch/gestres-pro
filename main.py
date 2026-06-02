@@ -20,11 +20,14 @@ def main():
         pass
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Gestionnaire de Ressources")
-    app.setOrganizationName("BTS SIO")
+    app.setApplicationName("GestRes Pro")
+    app.setApplicationVersion("1.0.0")
+    app.setOrganizationName("GestRes")
 
+    from src.views.styles import GLOBAL_STYLE
     from src.views.main_window import MainWindow
 
+    app.setStyleSheet(GLOBAL_STYLE)
     window = MainWindow()
     window.show()
 

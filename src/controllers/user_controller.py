@@ -35,6 +35,9 @@ class UserController:
 
     def create_user(self, email: str, password: str, first_name: str, last_name: str,
                     role_id: int, company_id: Optional[int] = None) -> Tuple[bool, str, Optional[int]]:
+        if not auth_controller.has_permission("manage_users"):
+            return False, "Permission refusée", None
+
         if not validate_email(email):
             return False, "Format d'email invalide", None
 
@@ -82,6 +85,9 @@ class UserController:
     def update_user(self, user_id: int, email: Optional[str] = None, first_name: Optional[str] = None,
                     last_name: Optional[str] = None, role_id: Optional[int] = None,
                     company_id: Optional[int] = None, is_active: Optional[bool] = None) -> Tuple[bool, str]:
+        if not auth_controller.has_permission("manage_users"):
+            return False, "Permission refusée"
+
         with get_session() as session:
             user = session.query(User).filter_by(id=user_id).first()
             if not user:
@@ -141,7 +147,9 @@ class UserController:
             return True, "Utilisateur mis à jour avec succès"
 
     def delete_user(self, user_id: int) -> Tuple[bool, str]:
-        # soft delete
+        if not auth_controller.has_permission("manage_users"):
+            return False, "Permission refusée"
+
         if auth_controller.current_user and auth_controller.current_user.id == user_id:
             return False, "Vous ne pouvez pas vous supprimer vous-même"
 
@@ -164,6 +172,9 @@ class UserController:
             return True, "Utilisateur désactivé avec succès"
 
     def reset_password(self, user_id: int, new_password: str) -> Tuple[bool, str]:
+        if not auth_controller.has_permission("manage_users"):
+            return False, "Permission refusée"
+
         is_valid, errors = validate_password_strength(new_password)
         if not is_valid:
             return False, errors[0]

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 import json
 
@@ -13,12 +13,17 @@ from src.utils.security import (
     validate_password_strength, validate_email
 )
 
+_MAX_ATTEMPTS = 5
+_LOCKOUT_MINUTES = 15
+
 
 class AuthController:
 
     def __init__(self):
         self._current_user: Optional[User] = None
         self._session_token: Optional[str] = None
+        # email → {"count": int, "since": datetime}
+        self._failed_attempts: dict = {}
 
     @property
     def current_user(self) -> Optional[User]:
@@ -28,14 +33,50 @@ class AuthController:
     def is_authenticated(self) -> bool:
         return self._current_user is not None
 
+    def _is_locked_out(self, email: str) -> bool:
+        key = email.lower().strip()
+        info = self._failed_attempts.get(key)
+        if not info:
+            return False
+        if info["count"] < _MAX_ATTEMPTS:
+            return False
+        elapsed = datetime.now(timezone.utc) - info["since"]
+        if elapsed < timedelta(minutes=_LOCKOUT_MINUTES):
+            return True
+        del self._failed_attempts[key]
+        return False
+
+    def _record_failure(self, email: str):
+        key = email.lower().strip()
+        info = self._failed_attempts.get(key)
+        if not info:
+            self._failed_attempts[key] = {"count": 1, "since": datetime.now(timezone.utc)}
+        else:
+            elapsed = datetime.now(timezone.utc) - info["since"]
+            if elapsed >= timedelta(minutes=_LOCKOUT_MINUTES):
+                self._failed_attempts[key] = {"count": 1, "since": datetime.now(timezone.utc)}
+            else:
+                info["count"] += 1
+
+    def _reset_attempts(self, email: str):
+        self._failed_attempts.pop(email.lower().strip(), None)
+
     def login(self, email: str, password: str) -> tuple[bool, str]:
         if not email or not password:
             return False, "Email et mot de passe requis"
+
+        if self._is_locked_out(email):
+            self._log_failed_login(email)
+            return False, (
+                f"Compte temporairement bloqué après {_MAX_ATTEMPTS} tentatives échouées. "
+                f"Réessayez dans {_LOCKOUT_MINUTES} minutes."
+            )
 
         with get_session() as session:
             user = session.query(User).filter_by(email=email.lower().strip()).first()
 
             if not user:
+                self._record_failure(email)
                 self._log_failed_login(email)
                 return False, "Email ou mot de passe incorrect"
 
@@ -44,8 +85,11 @@ class AuthController:
                 return False, "Ce compte est désactivé"
 
             if not verify_password(password, user.password_hash):
+                self._record_failure(email)
                 self._log_failed_login(email, user.id)
                 return False, "Email ou mot de passe incorrect"
+
+            self._reset_attempts(email)
 
             token = generate_token()
             token_hash = hash_token(token)
@@ -165,7 +209,9 @@ class AuthController:
 
             log = AuditLog.log(action="PASSWORD_CHANGE", user_id=user.id,
                                table_name="users", record_id=user.id)
-            session.add(log)
+            s
+
+            ession.add(log)
             session.commit()
 
             return True, "Mot de passe modifié avec succès"

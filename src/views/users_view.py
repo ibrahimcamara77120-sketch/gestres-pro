@@ -219,6 +219,32 @@ class ResetPasswordDialog(QDialog):
             self.error_label.show()
 
 
+def _page_header(title: str, subtitle: str) -> QFrame:
+    frame = QFrame()
+    frame.setStyleSheet(f"""
+        QFrame {{
+            background-color: {COLORS['white']};
+            border-bottom: 1px solid {COLORS['border_light']};
+        }}
+    """)
+    from PySide6.QtWidgets import QGraphicsDropShadowEffect
+    from PySide6.QtGui import QColor
+    sh = QGraphicsDropShadowEffect()
+    sh.setBlurRadius(12); sh.setXOffset(0); sh.setYOffset(2)
+    sh.setColor(QColor(0, 0, 0, 12))
+    frame.setGraphicsEffect(sh)
+    lay = QVBoxLayout(frame)
+    lay.setContentsMargins(30, 20, 30, 16)
+    lay.setSpacing(4)
+    t = QLabel(title)
+    t.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {COLORS['text_primary']}; background: transparent;")
+    lay.addWidget(t)
+    s = QLabel(subtitle)
+    s.setStyleSheet(f"font-size: 14px; color: {COLORS['text_muted']}; background: transparent;")
+    lay.addWidget(s)
+    return frame
+
+
 class UsersView(QWidget):
 
     def __init__(self, parent=None):
@@ -228,31 +254,49 @@ class UsersView(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        header = QHBoxLayout()
-        title = QLabel("Utilisateurs")
-        title.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {COLORS['text_primary']}; background: transparent;")
-        header.addWidget(title)
-        header.addStretch()
-        layout.addLayout(header)
+        layout.addWidget(_page_header("👥  Gestion des utilisateurs",
+                                      "Gérez les comptes, les rôles et les accès"))
+
+        inner = QWidget()
+        inner.setStyleSheet(f"background-color: {COLORS['background']};")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(30, 24, 30, 24)
+        inner_layout.setSpacing(0)
 
         columns = [
-            {"key": "full_name", "label": "Nom complet"},
-            {"key": "email", "label": "Email"},
-            {"key": "role_display", "label": "Rôle"},
-            {"key": "company_name", "label": "Entreprise"},
-            {"key": "status", "label": "Statut", "width": 100,
-             "style": lambda v, r: {"color": COLORS["success"] if r.get("is_active") else COLORS["danger"]}},
-            {"key": "last_login", "label": "Dernière connexion", "width": 160},
+            {"key": "full_name",  "label": "👤  Nom complet"},
+            {"key": "email",      "label": "✉️  Email"},
+            {"key": "role_display","label": "🔑  Rôle"},
+            {"key": "company_name","label": "🏢  Entreprise"},
+            {"key": "status",     "label": "Statut", "width": 110},
+            {"key": "last_login", "label": "🕐  Dernière connexion", "width": 170},
         ]
 
         self.table = DataTable(columns, title="Liste des utilisateurs", page_size=15)
+
+        # Filtres
+        companies = company_controller.get_all_companies()
+        company_opts = [("Toutes les entreprises", None)] + [(c["name"], str(c["id"])) for c in companies]
+        self.table.add_filter("Entreprise", company_opts, "company_id")
+        self.table.add_filter("Rôle", [
+            ("Tous les rôles", None),
+            ("Super Administrateur", "super_admin"),
+            ("Administrateur", "admin"),
+            ("Employé", "employee"),
+        ], "role_name")
+        self.table.add_filter("Statut", [
+            ("Tous", None),
+            ("Actif", True),
+            ("Inactif", False),
+        ], "is_active", filter_type="bool")
+
         self.table.set_actions([
-            {"name": "edit", "icon": "✏️", "label": "Modifier", "color": COLORS["primary"]},
-            {"name": "reset_pwd", "icon": "🔑", "label": "Réinitialiser mdp", "color": COLORS["warning"]},
-            {"name": "toggle", "icon": "🔄", "label": "Activer/Désactiver", "color": COLORS["secondary"]},
+            {"name": "edit",      "icon": "✏️",  "label": "Modifier",            "color": COLORS["primary"]},
+            {"name": "reset_pwd", "icon": "🔑",  "label": "Réinitialiser mdp",   "color": COLORS["warning"]},
+            {"name": "toggle",    "icon": "🔄",  "label": "Activer/Désactiver",  "color": COLORS["secondary"]},
         ])
 
         is_admin = auth_controller.is_admin()
@@ -262,12 +306,26 @@ class UsersView(QWidget):
         self.table.refresh_clicked.connect(self.load_data)
         self.table.action_triggered.connect(self._on_action)
 
-        layout.addWidget(self.table)
+        inner_layout.addWidget(self.table)
+        layout.addWidget(inner)
 
     def load_data(self):
         try:
             users = user_controller.get_all_users()
             self.table.set_data(users)
+            # Status badges — column index 4
+            status_col = 4
+            for row_idx in range(self.table.table.rowCount()):
+                start = (self.table._current_page - 1) * self.table._page_size
+                idx = start + row_idx
+                if idx < len(self.table._filtered_data):
+                    is_active = self.table._filtered_data[idx].get("is_active", True)
+                    if is_active:
+                        self.table.set_status_badge(row_idx, status_col, "Actif",
+                                                    COLORS["success_dark"], COLORS["success_light"])
+                    else:
+                        self.table.set_status_badge(row_idx, status_col, "Inactif",
+                                                    COLORS["danger_dark"], COLORS["danger_light"])
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les utilisateurs : {e}")
 

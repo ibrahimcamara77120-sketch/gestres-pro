@@ -50,6 +50,9 @@ class CompanyController:
 
     def create_company(self, name: str, siret: Optional[str] = None,
                        address: Optional[str] = None) -> Tuple[bool, str, Optional[int]]:
+        if not auth_controller.is_super_admin():
+            return False, "Permission refusée : réservé au Super Administrateur", None
+
         name = sanitize_input(name)
         if not name or len(name) < 2:
             return False, "Nom requis (min 2 caractères)", None
@@ -86,6 +89,9 @@ class CompanyController:
 
     def update_company(self, company_id: int, name: Optional[str] = None, siret: Optional[str] = None,
                        address: Optional[str] = None, is_active: Optional[bool] = None) -> Tuple[bool, str]:
+        if not auth_controller.has_permission("manage_resources"):
+            return False, "Permission refusée"
+
         with get_session() as session:
             company = session.query(Company).filter_by(id=company_id).first()
             if not company:
@@ -135,7 +141,9 @@ class CompanyController:
             return True, "Entreprise mise à jour avec succès"
 
     def delete_company(self, company_id: int) -> Tuple[bool, str]:
-        # soft delete
+        if not auth_controller.is_super_admin():
+            return False, "Permission refusée : réservé au Super Administrateur"
+
         with get_session() as session:
             company = session.query(Company).filter_by(id=company_id).first()
             if not company:

@@ -4,59 +4,69 @@ from PySide6.QtWidgets import (
     QSizePolicy, QGraphicsDropShadowEffect, QStackedWidget, QMessageBox
 )
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPainter, QLinearGradient, QBrush
 
 from src.controllers.auth_controller import auth_controller
 from src.views.styles import COLORS
 
 
 class StatCard(QFrame):
-    def __init__(self, title: str, value: str, icon: str, color: str, parent=None):
+    """Carte statistique avec fond dégradé coloré."""
+
+    def __init__(self, title: str, value: str, icon: str,
+                 grad_start: str, grad_end: str, parent=None):
         super().__init__(parent)
-        self._color = color
-        self._setup_ui(title, value, icon, color)
+        self._grad_start = grad_start
+        self._grad_end = grad_end
+        self._setup_ui(title, value, icon, grad_start, grad_end)
 
-    def _setup_ui(self, title: str, value: str, icon: str, color: str):
-        self.setMinimumSize(240, 140)
-        self.setMaximumHeight(140)
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        gradient = QLinearGradient(0, 0, self.width(), self.height())
+        gradient.setColorAt(0.0, QColor(self._grad_start))
+        gradient.setColorAt(1.0, QColor(self._grad_end))
+        from PySide6.QtGui import QPainterPath
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.width(), self.height(), 14, 14)
+        painter.fillPath(path, QBrush(gradient))
+
+    def _setup_ui(self, title: str, value: str, icon: str,
+                  grad_start: str, grad_end: str):
+        self.setMinimumSize(220, 130)
+        self.setMaximumHeight(130)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {COLORS['white']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 12px;
-                border-left: 4px solid {color};
-            }}
-        """)
+        self.setStyleSheet("QFrame { border: none; border-radius: 14px; }")
 
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
+        shadow.setBlurRadius(30)
         shadow.setXOffset(0)
-        shadow.setYOffset(4)
-        shadow.setColor(QColor(0, 0, 0, 25))
+        shadow.setYOffset(8)
+        shadow.setColor(QColor(grad_start.replace("#", "") and QColor(grad_start)))
+        shadow.setColor(QColor(0, 0, 0, 50))
         self.setGraphicsEffect(shadow)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(22, 20, 22, 20)
 
         text_layout = QVBoxLayout()
-        text_layout.setSpacing(8)
+        text_layout.setSpacing(6)
 
         self.title_label = QLabel(title)
-        self.title_label.setStyleSheet(f"""
-            color: {COLORS['text_secondary']};
-            font-size: 13px;
-            font-weight: 500;
+        self.title_label.setStyleSheet("""
+            color: rgba(255,255,255,0.80);
+            font-size: 12px;
+            font-weight: 600;
             background: transparent;
+            letter-spacing: 0.5px;
         """)
         text_layout.addWidget(self.title_label)
 
         self.value_label = QLabel(value)
-        self.value_label.setStyleSheet(f"""
-            color: {COLORS['text_primary']};
-            font-size: 32px;
-            font-weight: bold;
+        self.value_label.setStyleSheet("""
+            color: white;
+            font-size: 36px;
+            font-weight: 800;
             background: transparent;
         """)
         text_layout.addWidget(self.value_label)
@@ -66,10 +76,10 @@ class StatCard(QFrame):
         layout.addStretch()
 
         icon_label = QLabel(icon)
-        icon_label.setStyleSheet(f"""
-            font-size: 40px;
+        icon_label.setStyleSheet("""
+            font-size: 44px;
             background: transparent;
-            color: {color};
+            color: rgba(255,255,255,0.35);
         """)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_label)
@@ -92,12 +102,12 @@ class QuickActionCard(QFrame):
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {COLORS['white']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 12px;
+                border: 1.5px solid {COLORS['border']};
+                border-radius: 14px;
             }}
             QFrame:hover {{
                 border-color: {color};
-                background-color: {COLORS['border_light']};
+                background-color: #faf9ff;
             }}
         """)
 
@@ -181,23 +191,36 @@ class DashboardView(QWidget):
 
         logo_container = QHBoxLayout()
         logo_badge = QLabel("GR")
-        logo_badge.setFixedSize(36, 36)
+        logo_badge.setFixedSize(40, 40)
         logo_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_badge.setStyleSheet(f"""
-            background-color: {COLORS['primary']};
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 {COLORS['primary']}, stop:1 #8b5cf6);
             color: white;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: bold;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 800;
         """)
         logo_container.addWidget(logo_badge)
-        logo_container.addSpacing(10)
+        logo_container.addSpacing(12)
 
+        title_col = QVBoxLayout()
+        title_col.setSpacing(1)
         app_title = QLabel("GestRes Pro")
-        app_title.setStyleSheet(f"color: {COLORS['white']}; font-size: 17px; font-weight: bold; background: transparent;")
-        logo_container.addWidget(app_title)
+        app_title.setStyleSheet(f"color: {COLORS['white']}; font-size: 16px; font-weight: 800; background: transparent;")
+        app_sub = QLabel("Gestion de ressources")
+        app_sub.setStyleSheet(f"color: {COLORS['sidebar_text']}; font-size: 10px; background: transparent;")
+        title_col.addWidget(app_title)
+        title_col.addWidget(app_sub)
+        logo_container.addLayout(title_col)
         logo_container.addStretch()
         sidebar_layout.addLayout(logo_container)
+
+        # Séparateur
+        sep = QFrame()
+        sep.setFixedHeight(1)
+        sep.setStyleSheet(f"background-color: {COLORS['sidebar_border']}; margin: 4px 0px;")
+        sidebar_layout.addWidget(sep)
 
         sidebar_layout.addSpacing(30)
 
@@ -205,12 +228,12 @@ class DashboardView(QWidget):
         menu_label.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: 11px; font-weight: 600; letter-spacing: 1px; background: transparent; margin-bottom: 8px;")
         sidebar_layout.addWidget(menu_label)
 
-        self.btn_dashboard = self._create_menu_button("Tableau de bord", True)
-        self.btn_users = self._create_menu_button("Utilisateurs", False)
-        self.btn_companies = self._create_menu_button("Entreprises", False)
-        self.btn_resources = self._create_menu_button("Ressources", False)
-        self.btn_assignments = self._create_menu_button("Affectations", False)
-        self.btn_contracts = self._create_menu_button("Contrats", False)
+        self.btn_dashboard  = self._create_menu_button("🏠  Tableau de bord", True)
+        self.btn_users      = self._create_menu_button("👥  Utilisateurs", False)
+        self.btn_companies  = self._create_menu_button("🏢  Entreprises", False)
+        self.btn_resources  = self._create_menu_button("🖥️  Ressources", False)
+        self.btn_assignments = self._create_menu_button("📋  Affectations", False)
+        self.btn_contracts  = self._create_menu_button("📄  Contrats", False)
 
         for btn in [self.btn_dashboard, self.btn_users, self.btn_companies,
                     self.btn_resources, self.btn_assignments, self.btn_contracts]:
@@ -222,7 +245,7 @@ class DashboardView(QWidget):
         admin_label.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: 11px; font-weight: 600; letter-spacing: 1px; background: transparent; margin-bottom: 8px;")
         sidebar_layout.addWidget(admin_label)
 
-        self.btn_logs = self._create_menu_button("Journaux", False)
+        self.btn_logs = self._create_menu_button("📊  Journaux d'audit", False)
         sidebar_layout.addWidget(self.btn_logs)
 
         sidebar_layout.addStretch()
@@ -297,49 +320,79 @@ class DashboardView(QWidget):
         header_text = QVBoxLayout()
 
         self.welcome_label = QLabel("Bonjour,")
-        self.welcome_label.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 28px; font-weight: bold; background: transparent;")
+        self.welcome_label.setStyleSheet(f"""
+            color: {COLORS['text_primary']};
+            font-size: 32px;
+            font-weight: 800;
+            background: transparent;
+            letter-spacing: -0.5px;
+        """)
         header_text.addWidget(self.welcome_label)
 
         self.date_label = QLabel("Voici un aperçu de votre activité")
-        self.date_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 15px; background: transparent;")
+        self.date_label.setStyleSheet(f"""
+            color: {COLORS['text_muted']};
+            font-size: 15px;
+            background: transparent;
+            margin-top: 2px;
+        """)
         header_text.addWidget(self.date_label)
 
         header_layout.addLayout(header_text)
         header_layout.addStretch()
         content_layout.addLayout(header_layout)
 
-        stats_title = QLabel("Statistiques")
-        stats_title.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 18px; font-weight: 600; background: transparent;")
+        stats_title = QLabel("📊  Vue d'ensemble")
+        stats_title.setStyleSheet(f"""
+            color: {COLORS['text_primary']};
+            font-size: 17px;
+            font-weight: 700;
+            background: transparent;
+        """)
         content_layout.addWidget(stats_title)
 
         stats_grid = QGridLayout()
         stats_grid.setSpacing(20)
 
-        self.users_card = StatCard("Utilisateurs actifs", "0", "U", COLORS['primary'])
+        self.users_card = StatCard("Utilisateurs actifs", "0", "👥",
+                                   COLORS['grad_indigo_start'], COLORS['grad_indigo_end'])
         stats_grid.addWidget(self.users_card, 0, 0)
-        self.resources_card = StatCard("Ressources totales", "0", "R", COLORS['success'])
+        self.resources_card = StatCard("Ressources totales", "0", "🖥",
+                                       COLORS['grad_teal_start'], COLORS['grad_teal_end'])
         stats_grid.addWidget(self.resources_card, 0, 1)
-        self.assignments_card = StatCard("Affectations actives", "0", "A", COLORS['warning'])
+        self.assignments_card = StatCard("Affectations actives", "0", "📋",
+                                         COLORS['grad_emerald_start'], COLORS['grad_emerald_end'])
         stats_grid.addWidget(self.assignments_card, 0, 2)
-        self.companies_card = StatCard("Entreprises", "0", "E", COLORS['info'])
+        self.companies_card = StatCard("Entreprises", "0", "🏢",
+                                       COLORS['grad_amber_start'], COLORS['grad_amber_end'])
         stats_grid.addWidget(self.companies_card, 0, 3)
 
         content_layout.addLayout(stats_grid)
 
-        actions_title = QLabel("Actions rapides")
-        actions_title.setStyleSheet(f"color: {COLORS['text_primary']}; font-size: 18px; font-weight: 600; background: transparent; margin-top: 10px;")
+        actions_title = QLabel("⚡  Actions rapides")
+        actions_title.setStyleSheet(f"""
+            color: {COLORS['text_primary']};
+            font-size: 17px;
+            font-weight: 700;
+            background: transparent;
+            margin-top: 10px;
+        """)
         content_layout.addWidget(actions_title)
 
         actions_grid = QGridLayout()
-        actions_grid.setSpacing(16)
+        actions_grid.setSpacing(14)
 
-        self.action_new_user = QuickActionCard("Nouvel utilisateur", "Créer un compte utilisateur", "+", COLORS['primary'])
+        self.action_new_user = QuickActionCard(
+            "Nouvel utilisateur", "Créer un compte utilisateur", "👤", COLORS['primary'])
         actions_grid.addWidget(self.action_new_user, 0, 0)
-        self.action_new_resource = QuickActionCard("Nouvelle ressource", "Ajouter une ressource au parc", "+", COLORS['success'])
+        self.action_new_resource = QuickActionCard(
+            "Nouvelle ressource", "Ajouter une ressource au parc", "🖥️", COLORS['success'])
         actions_grid.addWidget(self.action_new_resource, 0, 1)
-        self.action_new_assignment = QuickActionCard("Nouvelle affectation", "Affecter une ressource", "+", COLORS['warning'])
+        self.action_new_assignment = QuickActionCard(
+            "Nouvelle affectation", "Affecter une ressource à un employé", "📋", COLORS['warning'])
         actions_grid.addWidget(self.action_new_assignment, 1, 0)
-        self.action_view_logs = QuickActionCard("Voir les journaux", "Consulter l'historique des actions", "J", COLORS['secondary'])
+        self.action_view_logs = QuickActionCard(
+            "Journaux d'audit", "Consulter l'historique des actions", "📊", COLORS['secondary'])
         actions_grid.addWidget(self.action_view_logs, 1, 1)
 
         content_layout.addLayout(actions_grid)
@@ -361,16 +414,25 @@ class DashboardView(QWidget):
                 QPushButton {{
                     background-color: {COLORS['sidebar_active']};
                     color: {COLORS['white']};
-                    border: none; border-radius: 8px;
-                    padding: 12px 16px; font-size: 14px; font-weight: 500; text-align: left;
+                    border: none;
+                    border-left: 3px solid #a5b4fc;
+                    border-radius: 8px;
+                    padding: 11px 16px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    text-align: left;
                 }}
             """
         return f"""
             QPushButton {{
                 background-color: transparent;
                 color: {COLORS['sidebar_text']};
-                border: none; border-radius: 8px;
-                padding: 12px 16px; font-size: 14px; text-align: left;
+                border: none;
+                border-radius: 8px;
+                padding: 11px 16px;
+                font-size: 14px;
+                font-weight: 400;
+                text-align: left;
             }}
             QPushButton:hover {{
                 background-color: {COLORS['sidebar_hover']};
@@ -464,7 +526,15 @@ class DashboardView(QWidget):
         self.user_name_label.setText(user.full_name)
         role_display = {"super_admin": "Super Administrateur", "admin": "Administrateur", "employee": "Employé"}
         self.user_role_label.setText(role_display.get(user.role.name, user.role.name))
-        self.welcome_label.setText(f"Bonjour, {user.first_name or 'Utilisateur'} ! 👋")
+        self.welcome_label.setText(f"Bonjour, {user.first_name or 'Utilisateur'} 👋")
+
+        from datetime import date
+        DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
+        MONTHS = ["janvier","février","mars","avril","mai","juin",
+                  "juillet","août","septembre","octobre","novembre","décembre"]
+        today = date.today()
+        date_str = f"{DAYS[today.weekday()]} {today.day} {MONTHS[today.month - 1]} {today.year}"
+        self.date_label.setText(f"Bienvenue sur GestRes Pro  ·  {date_str}")
 
         is_admin = auth_controller.is_admin()
         is_super = auth_controller.is_super_admin()

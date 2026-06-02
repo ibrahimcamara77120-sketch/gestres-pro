@@ -1,43 +1,67 @@
 COLORS = {
-    "primary":        "#1d4ed8",
-    "primary_hover":  "#1e40af",
-    "primary_light":  "#dbeafe",
+    # Accents principaux — indigo/violet premium
+    "primary":         "#6366f1",
+    "primary_hover":   "#4f46e5",
+    "primary_light":   "#eef2ff",
+    "primary_dark":    "#3730a3",
 
-    "secondary":      "#475569",
-    "secondary_hover":"#334155",
+    # Secondaires
+    "secondary":       "#64748b",
+    "secondary_hover": "#475569",
 
-    "success":        "#059669",
+    # Sémantiques
+    "success":        "#10b981",
     "success_light":  "#d1fae5",
-    "warning":        "#d97706",
+    "success_dark":   "#059669",
+    "warning":        "#f59e0b",
     "warning_light":  "#fef3c7",
-    "danger":         "#dc2626",
+    "warning_dark":   "#d97706",
+    "danger":         "#ef4444",
     "danger_light":   "#fee2e2",
-    "info":           "#0284c7",
-    "info_light":     "#e0f2fe",
+    "danger_dark":    "#dc2626",
+    "info":           "#3b82f6",
+    "info_light":     "#eff6ff",
 
+    # Surfaces
     "white":          "#ffffff",
-    "background":     "#f1f5f9",
+    "background":     "#f1f3fc",
     "surface":        "#ffffff",
-    "border":         "#cbd5e1",
-    "border_light":   "#e2e8f0",
+    "surface_raised": "#f8faff",
+    "border":         "#e2e8f0",
+    "border_light":   "#f1f5f9",
 
-    "text_primary":   "#0f172a",
-    "text_secondary": "#475569",
+    # Textes
+    "text_primary":   "#1e1b4b",
+    "text_secondary": "#64748b",
     "text_muted":     "#94a3b8",
     "text_inverse":   "#ffffff",
 
-    "sidebar_bg":     "#0f172a",
-    "sidebar_hover":  "#1e293b",
-    "sidebar_active": "#1d4ed8",
-    "sidebar_text":   "#94a3b8",
+    # Sidebar premium
+    "sidebar_bg":          "#1e1b4b",
+    "sidebar_deep":        "#13113a",
+    "sidebar_hover":       "#2d2a6e",
+    "sidebar_active":      "#6366f1",
+    "sidebar_active_glow": "#6366f140",
+    "sidebar_text":        "#a5b4fc",
     "sidebar_text_active": "#ffffff",
+    "sidebar_border":      "#2d2a6e",
+
+    # Gradients stat cards
+    "grad_indigo_start": "#6366f1",
+    "grad_indigo_end":   "#8b5cf6",
+    "grad_teal_start":   "#06b6d4",
+    "grad_teal_end":     "#3b82f6",
+    "grad_emerald_start":"#10b981",
+    "grad_emerald_end":  "#059669",
+    "grad_amber_start":  "#f59e0b",
+    "grad_amber_end":    "#ef4444",
 }
 
 GLOBAL_STYLE = f"""
 QMainWindow, QWidget {{
     background-color: {COLORS['background']};
     color: {COLORS['text_primary']};
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Helvetica Neue", "Arial";
     font-size: 14px;
 }}
 
@@ -49,21 +73,22 @@ QLabel {{
 QLineEdit {{
     background-color: {COLORS['white']};
     color: {COLORS['text_primary']};
-    border: 1px solid {COLORS['border']};
-    border-radius: 5px;
-    padding: 9px 12px;
+    border: 1.5px solid {COLORS['border']};
+    border-radius: 8px;
+    padding: 10px 14px;
     font-size: 14px;
     selection-background-color: {COLORS['primary']};
 }}
 
 QLineEdit:focus {{
     border: 2px solid {COLORS['primary']};
-    padding: 8px 11px;
+    background-color: {COLORS['white']};
 }}
 
 QLineEdit:disabled {{
     background-color: {COLORS['border_light']};
     color: {COLORS['text_muted']};
+    border-color: {COLORS['border_light']};
 }}
 
 QLineEdit::placeholder {{
@@ -73,11 +98,10 @@ QLineEdit::placeholder {{
 QTextEdit {{
     background-color: {COLORS['white']};
     color: {COLORS['text_primary']};
-    border: 1px solid {COLORS['border']};
-    border-radius: 5px;
-    padding: 8px 10px;
+    border: 1.5px solid {COLORS['border']};
+    border-radius: 8px;
+    padding: 10px 12px;
     font-size: 14px;
-    selection-background-color: {COLORS['primary']};
 }}
 
 QTextEdit:focus {{
@@ -87,9 +111,9 @@ QTextEdit:focus {{
 QDateEdit {{
     background-color: {COLORS['white']};
     color: {COLORS['text_primary']};
-    border: 1px solid {COLORS['border']};
-    border-radius: 5px;
-    padding: 8px 12px;
+    border: 1.5px solid {COLORS['border']};
+    border-radius: 8px;
+    padding: 10px 12px;
     font-size: 14px;
 }}
 
@@ -106,8 +130,8 @@ QPushButton {{
     background-color: {COLORS['primary']};
     color: {COLORS['text_inverse']};
     border: none;
-    border-radius: 5px;
-    padding: 9px 18px;
+    border-radius: 8px;
+    padding: 10px 20px;
     font-size: 14px;
     font-weight: 600;
 }}
@@ -117,7 +141,7 @@ QPushButton:hover {{
 }}
 
 QPushButton:pressed {{
-    background-color: #1e3a8a;
+    background-color: {COLORS['primary_dark']};
 }}
 
 QPushButton:disabled {{
@@ -128,9 +152,9 @@ QPushButton:disabled {{
 QComboBox {{
     background-color: {COLORS['white']};
     color: {COLORS['text_primary']};
-    border: 1px solid {COLORS['border']};
-    border-radius: 5px;
-    padding: 9px 12px;
+    border: 1.5px solid {COLORS['border']};
+    border-radius: 8px;
+    padding: 10px 14px;
     font-size: 14px;
 }}
 
@@ -147,23 +171,23 @@ QComboBox QAbstractItemView {{
     background-color: {COLORS['white']};
     color: {COLORS['text_primary']};
     border: 1px solid {COLORS['border']};
-    border-radius: 4px;
+    border-radius: 8px;
     selection-background-color: {COLORS['primary_light']};
     selection-color: {COLORS['primary']};
-    padding: 4px;
+    padding: 6px;
 }}
 
 QTableWidget {{
     background-color: {COLORS['white']};
     color: {COLORS['text_primary']};
     border: 1px solid {COLORS['border']};
-    border-radius: 6px;
+    border-radius: 10px;
     gridline-color: {COLORS['border_light']};
-    alternate-background-color: {COLORS['background']};
+    alternate-background-color: {COLORS['surface_raised']};
 }}
 
 QTableWidget::item {{
-    padding: 10px 12px;
+    padding: 12px 14px;
     color: {COLORS['text_primary']};
     border: none;
 }}
@@ -174,19 +198,18 @@ QTableWidget::item:selected {{
 }}
 
 QTableWidget::item:hover {{
-    background-color: {COLORS['border_light']};
+    background-color: #f5f3ff;
 }}
 
 QHeaderView::section {{
-    background-color: {COLORS['sidebar_hover']};
-    color: {COLORS['text_inverse']};
-    padding: 10px 12px;
+    background-color: {COLORS['sidebar_bg']};
+    color: {COLORS['sidebar_text']};
+    padding: 12px 14px;
     border: none;
-    border-right: 1px solid {COLORS['sidebar_bg']};
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    border-right: 1px solid {COLORS['sidebar_deep']};
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
 }}
 
 QHeaderView::section:last {{
@@ -194,20 +217,20 @@ QHeaderView::section:last {{
 }}
 
 QScrollBar:vertical {{
-    background-color: {COLORS['border_light']};
-    width: 8px;
-    border-radius: 4px;
+    background-color: transparent;
+    width: 6px;
+    border-radius: 3px;
     margin: 0;
 }}
 
 QScrollBar::handle:vertical {{
     background-color: {COLORS['border']};
-    border-radius: 4px;
+    border-radius: 3px;
     min-height: 30px;
 }}
 
 QScrollBar::handle:vertical:hover {{
-    background-color: {COLORS['secondary']};
+    background-color: {COLORS['primary']};
 }}
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
@@ -215,15 +238,15 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 }}
 
 QScrollBar:horizontal {{
-    background-color: {COLORS['border_light']};
-    height: 8px;
-    border-radius: 4px;
+    background-color: transparent;
+    height: 6px;
+    border-radius: 3px;
     margin: 0;
 }}
 
 QScrollBar::handle:horizontal {{
     background-color: {COLORS['border']};
-    border-radius: 4px;
+    border-radius: 3px;
     min-width: 30px;
 }}
 
@@ -264,7 +287,7 @@ def card_style(accent_color: str = None) -> str:
         QFrame {{
             background-color: {COLORS['white']};
             border: 1px solid {COLORS['border']};
-            border-radius: 6px;
+            border-radius: 12px;
             {border_left}
         }}
     """
@@ -276,7 +299,7 @@ def primary_button_style() -> str:
             background-color: {COLORS['primary']};
             color: {COLORS['text_inverse']};
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             padding: 10px 22px;
             font-size: 14px;
             font-weight: 600;
@@ -285,7 +308,7 @@ def primary_button_style() -> str:
             background-color: {COLORS['primary_hover']};
         }}
         QPushButton:pressed {{
-            background-color: #1e3a8a;
+            background-color: {COLORS['primary_dark']};
         }}
         QPushButton:disabled {{
             background-color: {COLORS['border']};
@@ -299,15 +322,16 @@ def secondary_button_style() -> str:
         QPushButton {{
             background-color: {COLORS['white']};
             color: {COLORS['text_primary']};
-            border: 1px solid {COLORS['border']};
-            border-radius: 5px;
+            border: 1.5px solid {COLORS['border']};
+            border-radius: 8px;
             padding: 10px 22px;
             font-size: 14px;
             font-weight: 500;
         }}
         QPushButton:hover {{
-            background-color: {COLORS['border_light']};
-            border-color: {COLORS['secondary']};
+            background-color: {COLORS['primary_light']};
+            border-color: {COLORS['primary']};
+            color: {COLORS['primary']};
         }}
         QPushButton:pressed {{
             background-color: {COLORS['border']};
@@ -321,13 +345,13 @@ def danger_button_style() -> str:
             background-color: {COLORS['danger']};
             color: {COLORS['text_inverse']};
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             padding: 10px 22px;
             font-size: 14px;
             font-weight: 600;
         }}
         QPushButton:hover {{
-            background-color: #b91c1c;
+            background-color: {COLORS['danger_dark']};
         }}
         QPushButton:pressed {{
             background-color: #991b1b;
@@ -341,13 +365,13 @@ def success_button_style() -> str:
             background-color: {COLORS['success']};
             color: {COLORS['text_inverse']};
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             padding: 10px 22px;
             font-size: 14px;
             font-weight: 600;
         }}
         QPushButton:hover {{
-            background-color: #047857;
+            background-color: {COLORS['success_dark']};
         }}
         QPushButton:pressed {{
             background-color: #065f46;
@@ -362,10 +386,10 @@ def action_button_style(color: str) -> str:
             background-color: {color};
             color: {COLORS['text_inverse']};
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 6px 14px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
         }}
         QPushButton:hover {{
             background-color: {hover_color};
@@ -388,10 +412,10 @@ def sidebar_button_style(is_active: bool = False) -> str:
                 background-color: {COLORS['sidebar_active']};
                 color: {COLORS['sidebar_text_active']};
                 border: none;
-                border-radius: 5px;
-                padding: 10px 16px;
+                border-radius: 8px;
+                padding: 11px 16px;
                 font-size: 13px;
-                font-weight: 600;
+                font-weight: 700;
                 text-align: left;
             }}
         """
@@ -400,8 +424,8 @@ def sidebar_button_style(is_active: bool = False) -> str:
             background-color: transparent;
             color: {COLORS['sidebar_text']};
             border: none;
-            border-radius: 5px;
-            padding: 10px 16px;
+            border-radius: 8px;
+            padding: 11px 16px;
             font-size: 13px;
             font-weight: 400;
             text-align: left;
@@ -421,7 +445,6 @@ def input_group_style() -> str:
             font-weight: 600;
             margin-bottom: 3px;
             background-color: transparent;
-            text-transform: uppercase;
             letter-spacing: 0.3px;
         }}
     """
@@ -432,8 +455,8 @@ def badge_style(color: str, bg_color: str) -> str:
         QLabel {{
             background-color: {bg_color};
             color: {color};
-            border-radius: 3px;
-            padding: 3px 8px;
+            border-radius: 4px;
+            padding: 3px 9px;
             font-size: 11px;
             font-weight: 700;
         }}

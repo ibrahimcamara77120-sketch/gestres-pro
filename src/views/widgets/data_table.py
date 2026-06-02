@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional, Tuple
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLineEdit, QLabel, QFrame, QHeaderView, QComboBox,
@@ -30,6 +30,10 @@ class DataTable(QWidget):
         self._data: List[Dict[str, Any]] = []
         self._filtered_data: List[Dict[str, Any]] = []
         self._actions: List[Dict[str, Any]] = []
+        # filters: list of {"key": str, "combo": QComboBox, "type": "value"|"bool"}
+        self._filters: List[Dict[str, Any]] = []
+        self._filter_bar_layout: Optional[QHBoxLayout] = None
+        self._container_layout: Optional[QVBoxLayout] = None
 
         self._setup_ui()
         self._connect_signals()
@@ -37,59 +41,71 @@ class DataTable(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(16)
+        layout.setSpacing(0)
 
         container = QFrame()
         container.setStyleSheet(f"""
             QFrame {{
                 background-color: {COLORS['white']};
                 border: 1px solid {COLORS['border']};
-                border-radius: 12px;
+                border-radius: 14px;
             }}
         """)
 
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(20)
+        shadow.setBlurRadius(24)
         shadow.setXOffset(0)
         shadow.setYOffset(4)
-        shadow.setColor(QColor(0, 0, 0, 15))
+        shadow.setColor(QColor(0, 0, 0, 18))
         container.setGraphicsEffect(shadow)
 
-        container_layout = QVBoxLayout(container)
-        container_layout.setContentsMargins(20, 20, 20, 20)
-        container_layout.setSpacing(16)
+        self._container_layout = QVBoxLayout(container)
+        self._container_layout.setContentsMargins(0, 0, 0, 0)
+        self._container_layout.setSpacing(0)
 
-        header_layout = QHBoxLayout()
-        header_layout.setSpacing(16)
+        # ── Toolbar ──────────────────────────────────────────────
+        toolbar = QFrame()
+        toolbar.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['white']};
+                border-bottom: 1px solid {COLORS['border_light']};
+                border-radius: 0px;
+            }}
+        """)
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(20, 16, 20, 16)
+        toolbar_layout.setSpacing(12)
 
         self.title_label = QLabel(self._title)
         self.title_label.setStyleSheet(f"""
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 700;
             color: {COLORS['text_primary']};
             background: transparent;
         """)
-        header_layout.addWidget(self.title_label)
-        header_layout.addStretch()
+        toolbar_layout.addWidget(self.title_label)
+        toolbar_layout.addStretch()
 
         if self._show_search:
             self.search_input = QLineEdit()
-            self.search_input.setPlaceholderText("🔍 Rechercher...")
-            self.search_input.setFixedWidth(250)
+            self.search_input.setPlaceholderText("🔍  Rechercher...")
+            self.search_input.setFixedWidth(240)
+            self.search_input.setFixedHeight(36)
             self.search_input.setStyleSheet(f"""
                 QLineEdit {{
-                    background-color: {COLORS['background']};
+                    background-color: {COLORS['surface_raised']};
                     color: {COLORS['text_primary']};
-                    border: 1px solid {COLORS['border']};
+                    border: 1.5px solid {COLORS['border']};
                     border-radius: 8px;
-                    padding: 8px 12px;
+                    padding: 6px 12px;
                     font-size: 13px;
                 }}
                 QLineEdit:focus {{
                     border-color: {COLORS['primary']};
+                    background-color: {COLORS['white']};
                 }}
             """)
-            header_layout.addWidget(self.search_input)
+            toolbar_layout.addWidget(self.search_input)
 
         self.refresh_button = QPushButton("↻")
         self.refresh_button.setFixedSize(36, 36)
@@ -97,40 +113,49 @@ class DataTable(QWidget):
         self.refresh_button.setToolTip("Rafraîchir")
         self.refresh_button.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['background']};
+                background-color: {COLORS['surface_raised']};
                 color: {COLORS['text_secondary']};
-                border: 1px solid {COLORS['border']};
+                border: 1.5px solid {COLORS['border']};
                 border-radius: 8px;
-                font-size: 16px;
+                font-size: 17px;
+                font-weight: bold;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['border']};
-                color: {COLORS['text_primary']};
+                background-color: {COLORS['primary_light']};
+                color: {COLORS['primary']};
+                border-color: {COLORS['primary']};
             }}
         """)
-        header_layout.addWidget(self.refresh_button)
+        toolbar_layout.addWidget(self.refresh_button)
 
         if self._show_add_button:
-            self.add_button = QPushButton("+ Ajouter")
+            self.add_button = QPushButton("＋  Ajouter")
             self.add_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.add_button.setFixedHeight(36)
             self.add_button.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: {COLORS['primary']};
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 {COLORS['primary']}, stop:1 #8b5cf6);
                     color: white;
                     border: none;
                     border-radius: 8px;
-                    padding: 10px 20px;
+                    padding: 0px 18px;
                     font-size: 14px;
-                    font-weight: 500;
+                    font-weight: 600;
                 }}
                 QPushButton:hover {{
-                    background-color: {COLORS['primary_hover']};
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 {COLORS['primary_hover']}, stop:1 #7c3aed);
                 }}
             """)
-            header_layout.addWidget(self.add_button)
+            toolbar_layout.addWidget(self.add_button)
 
-        container_layout.addLayout(header_layout)
+        self._container_layout.addWidget(toolbar)
 
+        # ── Filter bar placeholder (inserted after toolbar when add_filter_bar is called) ──
+        self._filter_bar_frame = None
+
+        # ── Table ─────────────────────────────────────────────────
         self.table = QTableWidget()
         self.table.setColumnCount(len(self._columns) + 1)
 
@@ -141,11 +166,11 @@ class DataTable(QWidget):
             QTableWidget {{
                 background-color: {COLORS['white']};
                 border: none;
-                gridline-color: {COLORS['border_light']};
+                gridline-color: transparent;
                 color: {COLORS['text_primary']};
             }}
             QTableWidget::item {{
-                padding: 12px 8px;
+                padding: 10px 14px;
                 border-bottom: 1px solid {COLORS['border_light']};
                 color: {COLORS['text_primary']};
             }}
@@ -153,15 +178,21 @@ class DataTable(QWidget):
                 background-color: {COLORS['primary_light']};
                 color: {COLORS['primary']};
             }}
+            QTableWidget::item:hover {{
+                background-color: #f5f3ff;
+            }}
             QHeaderView::section {{
-                background-color: {COLORS['background']};
-                color: {COLORS['text_secondary']};
-                padding: 12px 8px;
+                background-color: {COLORS['sidebar_bg']};
+                color: {COLORS['sidebar_text']};
+                padding: 13px 14px;
                 border: none;
-                border-bottom: 2px solid {COLORS['border']};
-                font-weight: 600;
-                font-size: 12px;
-                text-transform: uppercase;
+                border-right: 1px solid {COLORS['sidebar_deep']};
+                font-weight: 700;
+                font-size: 11px;
+                letter-spacing: 0.6px;
+            }}
+            QHeaderView::section:last {{
+                border-right: none;
             }}
         """)
 
@@ -178,15 +209,25 @@ class DataTable(QWidget):
             else:
                 header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
-        self.table.setColumnWidth(len(self._columns), 150)
-        container_layout.addWidget(self.table)
+        self.table.setColumnWidth(len(self._columns), 160)
+        self._container_layout.addWidget(self.table)
 
-        footer_layout = QHBoxLayout()
+        # ── Footer ─────────────────────────────────────────────────
+        footer = QFrame()
+        footer.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['surface_raised']};
+                border-top: 1px solid {COLORS['border_light']};
+                border-radius: 0px;
+            }}
+        """)
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(20, 12, 20, 12)
         footer_layout.setSpacing(12)
 
         self.info_label = QLabel("0 élément(s)")
         self.info_label.setStyleSheet(f"""
-            color: {COLORS['text_secondary']};
+            color: {COLORS['text_muted']};
             font-size: 13px;
             background: transparent;
         """)
@@ -200,8 +241,9 @@ class DataTable(QWidget):
 
         self.page_label = QLabel("Page 1 / 1")
         self.page_label.setStyleSheet(f"""
-            color: {COLORS['text_primary']};
+            color: {COLORS['text_secondary']};
             font-size: 13px;
+            font-weight: 600;
             padding: 0 12px;
             background: transparent;
         """)
@@ -212,32 +254,167 @@ class DataTable(QWidget):
         self.next_button.setStyleSheet(self._pagination_button_style())
         footer_layout.addWidget(self.next_button)
 
-        container_layout.addLayout(footer_layout)
+        self._container_layout.addWidget(footer)
         layout.addWidget(container)
+
+    # ── Filter bar ──────────────────────────────────────────────────────────
+    def add_filter_bar(self):
+        """Create and insert the filter bar between toolbar and table."""
+        if self._filter_bar_frame is not None:
+            return  # already created
+
+        self._filter_bar_frame = QFrame()
+        self._filter_bar_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORS['surface_raised']};
+                border-bottom: 1px solid {COLORS['border_light']};
+            }}
+            QLabel {{
+                color: {COLORS['text_secondary']};
+                font-size: 12px;
+                font-weight: 600;
+                background: transparent;
+            }}
+            QComboBox {{
+                background-color: {COLORS['white']};
+                color: {COLORS['text_primary']};
+                border: 1.5px solid {COLORS['border']};
+                border-radius: 7px;
+                padding: 5px 10px;
+                font-size: 13px;
+                min-width: 140px;
+            }}
+            QComboBox:focus {{
+                border-color: {COLORS['primary']};
+            }}
+        """)
+        self._filter_bar_layout = QHBoxLayout(self._filter_bar_frame)
+        self._filter_bar_layout.setContentsMargins(20, 10, 20, 10)
+        self._filter_bar_layout.setSpacing(16)
+
+        filter_icon = QLabel("⚙️  Filtres :")
+        filter_icon.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: 12px; background: transparent;")
+        self._filter_bar_layout.addWidget(filter_icon)
+
+        self._filter_bar_layout.addStretch()
+
+        # Insert at index 1 (after toolbar, before table)
+        self._container_layout.insertWidget(1, self._filter_bar_frame)
+
+    def add_filter(self, label: str, options: List[Tuple], filter_key: str,
+                   filter_type: str = "value"):
+        """
+        Add a filter combo to the filter bar.
+        options: list of (display_label, value) — value=None means "all"
+        filter_type: "value" (exact match) | "bool" (True/False match)
+        """
+        if self._filter_bar_frame is None:
+            self.add_filter_bar()
+
+        lbl = QLabel(f"{label} :")
+        self._filter_bar_layout.insertWidget(
+            self._filter_bar_layout.count() - 1, lbl
+        )
+
+        combo = QComboBox()
+        combo.setFixedHeight(32)
+        for display, val in options:
+            combo.addItem(display, val)
+
+        combo.currentIndexChanged.connect(self._apply_all_filters)
+        self._filter_bar_layout.insertWidget(
+            self._filter_bar_layout.count() - 1, combo
+        )
+
+        self._filters.append({
+            "key": filter_key,
+            "combo": combo,
+            "type": filter_type,
+        })
+
+    # ── Badge helper ─────────────────────────────────────────────────────────
+    def set_status_badge(self, row_idx: int, col_idx: int,
+                         text: str, text_color: str, bg_color: str):
+        """Place a coloured pill badge in a table cell."""
+        widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
+        h = QHBoxLayout(widget)
+        h.setContentsMargins(6, 4, 6, 4)
+        h.setSpacing(0)
+
+        badge = QLabel(text)
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge.setStyleSheet(f"""
+            QLabel {{
+                background-color: {bg_color};
+                color: {text_color};
+                border-radius: 5px;
+                padding: 3px 10px;
+                font-size: 12px;
+                font-weight: 700;
+            }}
+        """)
+        h.addWidget(badge)
+        h.addStretch()
+        self.table.setCellWidget(row_idx, col_idx, widget)
+
+    # ── Filtering logic ───────────────────────────────────────────────────────
+    def _apply_all_filters(self):
+        search_text = ""
+        if self._show_search:
+            search_text = self.search_input.text().lower()
+
+        result = self._data
+
+        # Text search
+        if search_text:
+            result = [
+                row for row in result
+                if any(search_text in str(row.get(col["key"], "")).lower()
+                       for col in self._columns)
+            ]
+
+        # Combo filters
+        for f in self._filters:
+            val = f["combo"].currentData()
+            if val is None:
+                continue
+            key = f["key"]
+            if f["type"] == "bool":
+                result = [row for row in result if row.get(key) == val]
+            else:
+                result = [row for row in result
+                          if str(row.get(key, "")) == str(val)]
+
+        self._filtered_data = result
+        self._current_page = 1
+        self._refresh_table()
 
     def _pagination_button_style(self) -> str:
         return f"""
             QPushButton {{
                 background-color: {COLORS['white']};
                 color: {COLORS['text_primary']};
-                border: 1px solid {COLORS['border']};
-                border-radius: 6px;
-                padding: 8px 16px;
+                border: 1.5px solid {COLORS['border']};
+                border-radius: 7px;
+                padding: 6px 16px;
                 font-size: 13px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['background']};
+                background-color: {COLORS['primary_light']};
                 border-color: {COLORS['primary']};
+                color: {COLORS['primary']};
             }}
             QPushButton:disabled {{
                 color: {COLORS['text_muted']};
                 background-color: {COLORS['border_light']};
+                border-color: {COLORS['border_light']};
             }}
         """
 
     def _connect_signals(self):
         if self._show_search:
-            self.search_input.textChanged.connect(self._on_search)
+            self.search_input.textChanged.connect(self._apply_all_filters)
 
         self.refresh_button.clicked.connect(self.refresh_clicked.emit)
 
@@ -253,9 +430,7 @@ class DataTable(QWidget):
 
     def set_data(self, data: List[Dict[str, Any]]):
         self._data = data
-        self._filtered_data = data.copy()
-        self._current_page = 1
-        self._refresh_table()
+        self._apply_all_filters()
 
     def _refresh_table(self):
         self.table.setRowCount(0)
@@ -278,6 +453,15 @@ class DataTable(QWidget):
                 if "formatter" in col and col["formatter"]:
                     value = col["formatter"](value, row_data)
 
+                # Badge rendering
+                if col.get("badge") and "badge_colors" in col:
+                    badge_map = col["badge_colors"]
+                    str_val = str(value) if value is not None else ""
+                    if str_val in badge_map:
+                        tc, bc = badge_map[str_val]
+                        self.set_status_badge(row_idx, col_idx, str_val, tc, bc)
+                        continue
+
                 item = QTableWidgetItem(str(value) if value is not None else "")
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
 
@@ -291,19 +475,20 @@ class DataTable(QWidget):
             actions_widget = self._create_actions_widget(row_data.get("id", row_idx))
             self.table.setCellWidget(row_idx, len(self._columns), actions_widget)
 
-        self.table.resizeRowsToContents()
         for row in range(self.table.rowCount()):
-            self.table.setRowHeight(row, max(50, self.table.rowHeight(row)))
+            self.table.setRowHeight(row, 52)
 
-        self.info_label.setText(f"{total} élément(s)")
+        count_str = f"{total} élément{'s' if total != 1 else ''}"
+        self.info_label.setText(count_str)
         self.page_label.setText(f"Page {self._current_page} / {total_pages}")
         self.prev_button.setEnabled(self._current_page > 1)
         self.next_button.setEnabled(self._current_page < total_pages)
 
     def _create_actions_widget(self, row_id: int) -> QWidget:
         widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
         layout = QHBoxLayout(widget)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(6)
 
         for action in self._actions:
@@ -315,14 +500,14 @@ class DataTable(QWidget):
             color = action.get("color", COLORS['secondary'])
             btn.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: {color}15;
+                    background-color: {color}18;
                     color: {color};
                     border: none;
-                    border-radius: 6px;
+                    border-radius: 7px;
                     font-size: 14px;
                 }}
                 QPushButton:hover {{
-                    background-color: {color}30;
+                    background-color: {color}35;
                 }}
             """)
 
@@ -336,17 +521,7 @@ class DataTable(QWidget):
         return widget
 
     def _on_search(self, text: str):
-        if not text:
-            self._filtered_data = self._data.copy()
-        else:
-            text_lower = text.lower()
-            self._filtered_data = [
-                row for row in self._data
-                if any(text_lower in str(row.get(col["key"], "")).lower() for col in self._columns)
-            ]
-
-        self._current_page = 1
-        self._refresh_table()
+        self._apply_all_filters()
 
     def _prev_page(self):
         if self._current_page > 1:
