@@ -107,26 +107,6 @@ class DataTable(QWidget):
             """)
             toolbar_layout.addWidget(self.search_input)
 
-        self.refresh_button = QPushButton("↻")
-        self.refresh_button.setFixedSize(36, 36)
-        self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.refresh_button.setToolTip("Rafraîchir")
-        self.refresh_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS['surface_raised']};
-                color: {COLORS['text_secondary']};
-                border: 1.5px solid {COLORS['border']};
-                border-radius: 8px;
-                font-size: 17px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: {COLORS['primary_light']};
-                color: {COLORS['primary']};
-                border-color: {COLORS['primary']};
-            }}
-        """)
-        toolbar_layout.addWidget(self.refresh_button)
 
         if self._show_add_button:
             self.add_button = QPushButton("＋  Ajouter")
@@ -416,8 +396,6 @@ class DataTable(QWidget):
         if self._show_search:
             self.search_input.textChanged.connect(self._apply_all_filters)
 
-        self.refresh_button.clicked.connect(self.refresh_clicked.emit)
-
         if self._show_add_button:
             self.add_button.clicked.connect(self.add_clicked.emit)
 
@@ -492,22 +470,28 @@ class DataTable(QWidget):
         layout.setSpacing(6)
 
         for action in self._actions:
-            btn = QPushButton(action.get("icon", ""))
-            btn.setToolTip(action.get("label", ""))
-            btn.setFixedSize(32, 32)
+            icon = action.get("icon", "")
+            label = action.get("label", "")
+            btn = QPushButton(f"{icon}  {label}")
+            btn.setToolTip(label)
+            btn.setFixedHeight(30)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
             color = action.get("color", COLORS['secondary'])
             btn.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: {color}18;
+                    background-color: {color}22;
                     color: {color};
-                    border: none;
+                    border: 1.5px solid {color}60;
                     border-radius: 7px;
-                    font-size: 14px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    padding: 0px 10px;
                 }}
                 QPushButton:hover {{
-                    background-color: {color}35;
+                    background-color: {color};
+                    color: white;
+                    border-color: {color};
                 }}
             """)
 

@@ -277,21 +277,6 @@ class UsersView(QWidget):
 
         self.table = DataTable(columns, title="Liste des utilisateurs", page_size=15)
 
-        # Filtres
-        companies = company_controller.get_all_companies()
-        company_opts = [("Toutes les entreprises", None)] + [(c["name"], str(c["id"])) for c in companies]
-        self.table.add_filter("Entreprise", company_opts, "company_id")
-        self.table.add_filter("Rôle", [
-            ("Tous les rôles", None),
-            ("Super Administrateur", "super_admin"),
-            ("Administrateur", "admin"),
-            ("Employé", "employee"),
-        ], "role_name")
-        self.table.add_filter("Statut", [
-            ("Tous", None),
-            ("Actif", True),
-            ("Inactif", False),
-        ], "is_active", filter_type="bool")
 
         self.table.set_actions([
             {"name": "edit",      "icon": "✏️",  "label": "Modifier",            "color": COLORS["primary"]},

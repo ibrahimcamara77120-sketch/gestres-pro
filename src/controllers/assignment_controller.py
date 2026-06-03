@@ -139,6 +139,34 @@ class AssignmentController:
             session.commit()
             return True, "Affectation annulée"
 
+    def reactivate_assignment(self, assignment_id: int) -> Tuple[bool, str]:
+        with get_session() as session:
+            a = session.query(Assignment).filter_by(id=assignment_id).first()
+            if not a:
+                return False, "Affectation introuvable"
+            if a.status == "active":
+                return False, "Cette affectation est déjà active"
+
+            resource = session.query(Resource).filter_by(id=a.resource_id).first()
+            if resource and resource.status != "available":
+                return False, f"La ressource '{resource.name}' n'est plus disponible (statut : {resource.status})"
+
+            a.status = "active"
+            a.end_date = None
+
+            if resource:
+                resource.status = "assigned"
+
+            log = AuditLog.log(
+                action="UPDATE",
+                user_id=auth_controller.current_user.id if auth_controller.current_user else None,
+                table_name="assignments", record_id=assignment_id,
+                old_values={"status": a.status}, new_values={"status": "active"}
+            )
+            session.add(log)
+            session.commit()
+            return True, "Affectation réactivée avec succès"
+
     def _format_assignment(self, a: Assignment) -> Dict[str, Any]:
         status_labels = config.ASSIGNMENT_STATUS
         status_colors = {

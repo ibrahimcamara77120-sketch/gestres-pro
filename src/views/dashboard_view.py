@@ -241,9 +241,9 @@ class DashboardView(QWidget):
 
         sidebar_layout.addSpacing(20)
 
-        admin_label = QLabel("ADMINISTRATION")
-        admin_label.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: 11px; font-weight: 600; letter-spacing: 1px; background: transparent; margin-bottom: 8px;")
-        sidebar_layout.addWidget(admin_label)
+        self.admin_label = QLabel("ADMINISTRATION")
+        self.admin_label.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: 11px; font-weight: 600; letter-spacing: 1px; background: transparent; margin-bottom: 8px;")
+        sidebar_layout.addWidget(self.admin_label)
 
         self.btn_logs = self._create_menu_button("📊  Journaux d'audit", False)
         sidebar_layout.addWidget(self.btn_logs)
@@ -279,18 +279,32 @@ class DashboardView(QWidget):
         user_info.addWidget(self.user_role_label)
 
         user_layout.addLayout(user_info)
-        user_layout.addStretch()
 
-        self.logout_button = QPushButton("↪")
-        self.logout_button.setFixedSize(36, 36)
-        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.logout_button.setToolTip("Déconnexion")
-        self.logout_button.setStyleSheet(f"""
-            QPushButton {{ background-color: transparent; color: {COLORS['sidebar_text']}; border: none; border-radius: 8px; font-size: 18px; }}
-            QPushButton:hover {{ background-color: {COLORS['danger']}; color: white; }}
-        """)
-        user_layout.addWidget(self.logout_button)
         sidebar_layout.addWidget(user_frame)
+
+        self.logout_button = QPushButton("⏻  Se déconnecter")
+        self.logout_button.setMinimumHeight(42)
+        self.logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.logout_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS['danger']}18;
+                color: {COLORS['danger']};
+                border: 1.5px solid {COLORS['danger']}40;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 600;
+                padding: 0px 16px;
+                text-align: left;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['danger']};
+                color: white;
+                border-color: {COLORS['danger']};
+            }}
+        """)
+        sidebar_layout.addWidget(self.logout_button)
+
+        main_layout.addWidget(sidebar)
 
         main_layout.addWidget(sidebar)
 
@@ -351,23 +365,23 @@ class DashboardView(QWidget):
         """)
         content_layout.addWidget(stats_title)
 
-        stats_grid = QGridLayout()
-        stats_grid.setSpacing(20)
+        self.stats_grid = QGridLayout()
+        self.stats_grid.setSpacing(20)
 
         self.users_card = StatCard("Utilisateurs actifs", "0", "👥",
                                    COLORS['grad_indigo_start'], COLORS['grad_indigo_end'])
-        stats_grid.addWidget(self.users_card, 0, 0)
+        self.stats_grid.addWidget(self.users_card, 0, 0)
         self.resources_card = StatCard("Ressources totales", "0", "🖥",
                                        COLORS['grad_teal_start'], COLORS['grad_teal_end'])
-        stats_grid.addWidget(self.resources_card, 0, 1)
+        self.stats_grid.addWidget(self.resources_card, 0, 1)
         self.assignments_card = StatCard("Affectations actives", "0", "📋",
                                          COLORS['grad_emerald_start'], COLORS['grad_emerald_end'])
-        stats_grid.addWidget(self.assignments_card, 0, 2)
+        self.stats_grid.addWidget(self.assignments_card, 0, 2)
         self.companies_card = StatCard("Entreprises", "0", "🏢",
                                        COLORS['grad_amber_start'], COLORS['grad_amber_end'])
-        stats_grid.addWidget(self.companies_card, 0, 3)
+        self.stats_grid.addWidget(self.companies_card, 0, 3)
 
-        content_layout.addLayout(stats_grid)
+        content_layout.addLayout(self.stats_grid)
 
         actions_title = QLabel("⚡  Actions rapides")
         actions_title.setStyleSheet(f"""
@@ -379,23 +393,23 @@ class DashboardView(QWidget):
         """)
         content_layout.addWidget(actions_title)
 
-        actions_grid = QGridLayout()
-        actions_grid.setSpacing(14)
+        self.actions_grid = QGridLayout()
+        self.actions_grid.setSpacing(14)
 
         self.action_new_user = QuickActionCard(
             "Nouvel utilisateur", "Créer un compte utilisateur", "👤", COLORS['primary'])
-        actions_grid.addWidget(self.action_new_user, 0, 0)
+        self.actions_grid.addWidget(self.action_new_user, 0, 0)
         self.action_new_resource = QuickActionCard(
             "Nouvelle ressource", "Ajouter une ressource au parc", "🖥️", COLORS['success'])
-        actions_grid.addWidget(self.action_new_resource, 0, 1)
+        self.actions_grid.addWidget(self.action_new_resource, 0, 1)
         self.action_new_assignment = QuickActionCard(
             "Nouvelle affectation", "Affecter une ressource à un employé", "📋", COLORS['warning'])
-        actions_grid.addWidget(self.action_new_assignment, 1, 0)
+        self.actions_grid.addWidget(self.action_new_assignment, 1, 0)
         self.action_view_logs = QuickActionCard(
             "Journaux d'audit", "Consulter l'historique des actions", "📊", COLORS['secondary'])
-        actions_grid.addWidget(self.action_view_logs, 1, 1)
+        self.actions_grid.addWidget(self.action_view_logs, 1, 1)
 
-        content_layout.addLayout(actions_grid)
+        content_layout.addLayout(self.actions_grid)
         content_layout.addStretch()
 
         scroll.setWidget(content_widget)
@@ -542,8 +556,24 @@ class DashboardView(QWidget):
         self.btn_users.setVisible(is_admin)
         self.btn_companies.setVisible(is_super)
         self.btn_logs.setVisible(is_admin)
+        self.admin_label.setVisible(is_admin)
         self.action_new_user.setVisible(is_admin)
         self.action_view_logs.setVisible(is_admin)
+        self.users_card.setVisible(is_admin)
+        self.companies_card.setVisible(is_admin)
+
+        if not is_admin:
+            # Cartes stats : aligner "Ressources" et "Affectations" côte à côte
+            self.stats_grid.removeWidget(self.resources_card)
+            self.stats_grid.removeWidget(self.assignments_card)
+            self.stats_grid.addWidget(self.resources_card,   0, 0)
+            self.stats_grid.addWidget(self.assignments_card, 0, 1)
+
+            # Actions rapides : aligner les 2 cartes côte à côte
+            self.actions_grid.removeWidget(self.action_new_resource)
+            self.actions_grid.removeWidget(self.action_new_assignment)
+            self.actions_grid.addWidget(self.action_new_resource,   0, 0)
+            self.actions_grid.addWidget(self.action_new_assignment, 0, 1)
 
         self._pages = {}
         self._navigate("home")
@@ -557,10 +587,22 @@ class DashboardView(QWidget):
             from src.models.resource import Resource
             from src.models.assignment import Assignment
 
+            is_admin = auth_controller.is_admin()
+            user = auth_controller.current_user
+
             with get_session() as session:
-                self.users_card.set_value(str(session.query(User).filter_by(is_active=True).count()))
-                self.resources_card.set_value(str(session.query(Resource).count()))
-                self.assignments_card.set_value(str(session.query(Assignment).filter_by(status="active").count()))
-                self.companies_card.set_value(str(session.query(Company).filter_by(is_active=True).count()))
+                if is_admin:
+                    self.users_card.set_value(str(session.query(User).filter_by(is_active=True).count()))
+                    self.resources_card.set_value(str(session.query(Resource).count()))
+                    self.assignments_card.set_value(str(session.query(Assignment).filter_by(status="active").count()))
+                    self.companies_card.set_value(str(session.query(Company).filter_by(is_active=True).count()))
+                else:
+                    uid = user.id if user else None
+                    my_assignments = session.query(Assignment).filter_by(user_id=uid, status="active").count()
+                    my_resources = session.query(Assignment).filter_by(user_id=uid, status="active").count()
+                    self.resources_card.set_value(str(my_resources))
+                    self.assignments_card.set_value(str(my_assignments))
+                    self.resources_card.title_label.setText("Mes ressources")
+                    self.assignments_card.title_label.setText("Mes affectations")
         except Exception:
             pass

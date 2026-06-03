@@ -188,6 +188,8 @@ class ResourcesView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        user = auth_controller.current_user
+        self._is_employee = user is not None and user.role.name == "employee"
         self._setup_ui()
         self.load_data()
 
@@ -197,8 +199,12 @@ class ResourcesView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        layout.addWidget(_page_header("🖥️  Gestion des ressources",
-                                      "Matériel, logiciels et équipements de l'entreprise"))
+        if self._is_employee:
+            layout.addWidget(_page_header("🖥️  Mes ressources",
+                                          "Équipements qui vous sont affectés"))
+        else:
+            layout.addWidget(_page_header("🖥️  Gestion des ressources",
+                                          "Matériel, logiciels et équipements de l'entreprise"))
 
         inner = QWidget()
         inner.setStyleSheet(f"background-color: {COLORS['background']};")
@@ -206,51 +212,52 @@ class ResourcesView(QWidget):
         inner_layout.setContentsMargins(30, 20, 30, 24)
         inner_layout.setSpacing(16)
 
-        # Status mini-cards row
+        # Mini-cards (masquées pour les employés sauf "Affectées")
         cards_row = QHBoxLayout()
         cards_row.setSpacing(12)
         self._card_available  = _StatusMiniCard("Disponibles",  "0", COLORS["success_dark"],  COLORS["success_light"])
         self._card_assigned   = _StatusMiniCard("Affectées",    "0", COLORS["info"],           COLORS["info_light"])
         self._card_maintenance= _StatusMiniCard("Maintenance",  "0", COLORS["warning_dark"],   COLORS["warning_light"])
         self._card_retired    = _StatusMiniCard("Retirées",     "0", COLORS["text_muted"],      COLORS["border_light"])
-        for c in [self._card_available, self._card_assigned, self._card_maintenance, self._card_retired]:
-            cards_row.addWidget(c)
+        if self._is_employee:
+            cards_row.addWidget(self._card_assigned)
+        else:
+            for c in [self._card_available, self._card_assigned, self._card_maintenance, self._card_retired]:
+                cards_row.addWidget(c)
         cards_row.addStretch()
         inner_layout.addLayout(cards_row)
 
-        # Table
+        # Colonnes
         columns = [
-            {"key": "name",             "label": "🖥️  Nom"},
+            {"key": "name",              "label": "🖥️  Nom"},
             {"key": "resource_type_name","label": "📂  Type"},
-            {"key": "serial_number",    "label": "🔢  N° de série"},
-            {"key": "company_name",     "label": "🏢  Entreprise"},
-            {"key": "status_label",     "label": "Statut", "width": 130},
-            {"key": "created_at",       "label": "📅  Ajouté le", "width": 120},
+            {"key": "serial_number",     "label": "🔢  N° de série"},
+            {"key": "company_name",      "label": "🏢  Entreprise"},
+            {"key": "status_label", "label": "Statut", "width": 130,
+             "badge": True, "badge_colors": {
+                 "Disponible":  (COLORS["success_dark"],  COLORS["success_light"]),
+                 "Affectée":    (COLORS["info"],           COLORS["info_light"]),
+                 "Maintenance": (COLORS["warning_dark"],   COLORS["warning_light"]),
+                 "Retirée":     (COLORS["text_muted"],     COLORS["border_light"]),
+             }},
+            {"key": "created_at",        "label": "📅  Ajouté le", "width": 120},
         ]
 
-        self.table = DataTable(columns, title="Parc de ressources", page_size=15)
+        if self._is_employee:
+            self.table = DataTable(columns, title="Mes ressources affectées",
+                                   show_add_button=False, page_size=15)
+        else:
+            self.table = DataTable(columns, title="Parc de ressources", page_size=15)
 
-        # Filters
-        companies = company_controller.get_all_companies()
-        company_opts = [("Toutes les entreprises", None)] + [(c["name"], str(c["id"])) for c in companies]
-        self.table.add_filter("Entreprise", company_opts, "company_id")
-        self.table.add_filter("Statut", [
-            ("Tous les statuts", None),
-            ("Disponible",  "available"),
-            ("Affectée",    "assigned"),
-            ("Maintenance", "maintenance"),
-            ("Retirée",     "retired"),
-        ], "status")
 
-        self.table.set_actions([
-            {"name": "edit",   "icon": "✏️",  "label": "Modifier", "color": COLORS["primary"]},
-            {"name": "retire", "icon": "🗑️", "label": "Retirer",  "color": COLORS["danger"]},
-        ])
+            self.table.set_actions([
+                {"name": "edit",   "icon": "✏️",  "label": "Modifier", "color": COLORS["primary"]},
+                {"name": "retire", "icon": "🗑️", "label": "Retirer",  "color": COLORS["danger"]},
+            ])
+            self.table.add_clicked.connect(self._on_add)
+            self.table.action_triggered.connect(self._on_action)
 
-        self.table.add_clicked.connect(self._on_add)
         self.table.refresh_clicked.connect(self.load_data)
-        self.table.action_triggered.connect(self._on_action)
-
         inner_layout.addWidget(self.table)
         layout.addWidget(inner)
 
@@ -264,7 +271,11 @@ class ResourcesView(QWidget):
 
     def load_data(self):
         try:
-            resources = resource_controller.get_all_resources()
+            user = auth_controller.current_user
+            if self._is_employee and user:
+                resources = resource_controller.get_resources_by_user(user.id)
+            else:
+                resources = resource_controller.get_all_resources()
             self.table.set_data(resources)
 
             # Update mini-cards
@@ -273,20 +284,12 @@ class ResourcesView(QWidget):
                 s = r.get("status", "")
                 if s in counts:
                     counts[s] += 1
-            self._card_available.set_value(str(counts["available"]))
             self._card_assigned.set_value(str(counts["assigned"]))
-            self._card_maintenance.set_value(str(counts["maintenance"]))
-            self._card_retired.set_value(str(counts["retired"]))
+            if not self._is_employee:
+                self._card_available.set_value(str(counts["available"]))
+                self._card_maintenance.set_value(str(counts["maintenance"]))
+                self._card_retired.set_value(str(counts["retired"]))
 
-            # Status badges — column index 4
-            for row_idx in range(self.table.table.rowCount()):
-                start = (self.table._current_page - 1) * self.table._page_size
-                idx = start + row_idx
-                if idx < len(self.table._filtered_data):
-                    status = self.table._filtered_data[idx].get("status", "")
-                    if status in self._BADGE:
-                        tc, bc, label = self._BADGE[status]
-                        self.table.set_status_badge(row_idx, 4, label, tc, bc)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les ressources : {e}")
 

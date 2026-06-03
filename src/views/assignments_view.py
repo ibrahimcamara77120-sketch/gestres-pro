@@ -48,7 +48,7 @@ class AssignmentFormDialog(QDialog):
         self.user_combo = QComboBox()
         users = user_controller.get_all_users()
         for u in users:
-            if u["is_active"]:
+            if u["is_active"] and u.get("role_name") != "super_admin":
                 self.user_combo.addItem(f"{u['full_name']} ({u['email']})", u["id"])
         form.addRow(self._label("Bénéficiaire *"), self.user_combo)
 
@@ -147,6 +147,8 @@ class AssignmentsView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        user = auth_controller.current_user
+        self._is_employee = user is not None and user.role.name == "employee"
         self._setup_ui()
         self.load_data()
 
@@ -156,8 +158,12 @@ class AssignmentsView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        layout.addWidget(_page_header("📋  Gestion des affectations",
-                                      "Suivi des ressources attribuées aux collaborateurs"))
+        if self._is_employee:
+            layout.addWidget(_page_header("📋  Mes affectations",
+                                          "Ressources qui vous sont attribuées"))
+        else:
+            layout.addWidget(_page_header("📋  Gestion des affectations",
+                                          "Suivi des ressources attribuées aux collaborateurs"))
 
         inner = QWidget()
         inner.setStyleSheet(f"background-color: {COLORS['background']};")
@@ -165,50 +171,57 @@ class AssignmentsView(QWidget):
         inner_layout.setContentsMargins(30, 24, 30, 24)
         inner_layout.setSpacing(0)
 
-        columns = [
-            {"key": "resource_name",  "label": "🖥️  Ressource"},
-            {"key": "user_name",      "label": "👤  Bénéficiaire"},
-            {"key": "user_email",     "label": "✉️  Email"},
-            {"key": "assigner_name",  "label": "🔑  Affecté par"},
-            {"key": "start_date",     "label": "📅  Début",  "width": 110},
-            {"key": "end_date",       "label": "📅  Fin",    "width": 110},
-            {"key": "status_label",   "label": "Statut",      "width": 120},
-        ]
+        _status_badge_col = {
+            "key": "status_label", "label": "Statut", "width": 120,
+            "badge": True, "badge_colors": {
+                "Active":    (COLORS["success_dark"], COLORS["success_light"]),
+                "Retournée": (COLORS["info"],          COLORS["info_light"]),
+                "Annulée":   (COLORS["danger_dark"],   COLORS["danger_light"]),
+            }
+        }
 
-        self.table = DataTable(columns, title="Liste des affectations", page_size=15)
+        if self._is_employee:
+            columns = [
+                {"key": "resource_name",  "label": "🖥️  Ressource"},
+                {"key": "assigner_name",  "label": "🔑  Affecté par"},
+                {"key": "start_date",     "label": "📅  Début",  "width": 110},
+                {"key": "end_date",       "label": "📅  Fin",    "width": 110},
+                _status_badge_col,
+            ]
+            self.table = DataTable(columns, title="Mes affectations",
+                                   show_add_button=False, page_size=15)
+        else:
+            columns = [
+                {"key": "resource_name",  "label": "🖥️  Ressource"},
+                {"key": "user_name",      "label": "👤  Bénéficiaire"},
+                {"key": "user_email",     "label": "✉️  Email"},
+                {"key": "assigner_name",  "label": "🔑  Affecté par"},
+                {"key": "start_date",     "label": "📅  Début",  "width": 110},
+                {"key": "end_date",       "label": "📅  Fin",    "width": 110},
+                _status_badge_col,
+            ]
+            self.table = DataTable(columns, title="Liste des affectations", page_size=15)
+            self.table.set_actions([
+                {"name": "close",      "icon": "✅", "label": "Clôturer (retour)", "color": COLORS["success"]},
+                {"name": "cancel",     "icon": "❌", "label": "Annuler",           "color": COLORS["danger"]},
+                {"name": "reactivate", "icon": "🔁", "label": "Réactiver",         "color": COLORS["info"]},
+            ])
+            self.table.add_clicked.connect(self._on_add)
+            self.table.action_triggered.connect(self._on_action)
 
-        # Filter by status using DataTable's filter bar
-        self.table.add_filter("Statut", [
-            ("Toutes", None),
-            ("Active",     "active"),
-            ("Retournée",  "returned"),
-            ("Annulée",    "cancelled"),
-        ], "status")
-
-        self.table.set_actions([
-            {"name": "close",  "icon": "✅", "label": "Clôturer (retour)", "color": COLORS["success"]},
-            {"name": "cancel", "icon": "❌", "label": "Annuler",           "color": COLORS["danger"]},
-        ])
-
-        self.table.add_clicked.connect(self._on_add)
         self.table.refresh_clicked.connect(self.load_data)
-        self.table.action_triggered.connect(self._on_action)
 
         inner_layout.addWidget(self.table)
         layout.addWidget(inner)
 
     def load_data(self):
         try:
-            assignments = assignment_controller.get_all_assignments()
+            user = auth_controller.current_user
+            if self._is_employee and user:
+                assignments = assignment_controller.get_all_assignments(user_id=user.id)
+            else:
+                assignments = assignment_controller.get_all_assignments()
             self.table.set_data(assignments)
-            for row_idx in range(self.table.table.rowCount()):
-                start = (self.table._current_page - 1) * self.table._page_size
-                idx = start + row_idx
-                if idx < len(self.table._filtered_data):
-                    status = self.table._filtered_data[idx].get("status", "")
-                    if status in self._BADGE:
-                        tc, bc, label = self._BADGE[status]
-                        self.table.set_status_badge(row_idx, 6, label, tc, bc)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les affectations : {e}")
 
@@ -222,14 +235,35 @@ class AssignmentsView(QWidget):
         if not data:
             return
 
-        if data["status"] != "active":
-            QMessageBox.information(self, "Info", "Cette affectation est déjà clôturée.")
+        status = data["status"]
+        resource = data["resource_name"]
+
+        if action == "reactivate":
+            if status == "active":
+                QMessageBox.information(self, "Info", "Cette affectation est déjà active.")
+                return
+            reply = QMessageBox.question(
+                self, "Réactiver l'affectation",
+                f"Réactiver l'affectation de '{resource}' ?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                success, msg = assignment_controller.reactivate_assignment(assignment_id)
+                if success:
+                    QMessageBox.information(self, "Succès", msg)
+                    self.load_data()
+                else:
+                    QMessageBox.warning(self, "Erreur", msg)
+            return
+
+        if status != "active":
+            QMessageBox.information(self, "Info", "Cette affectation n'est pas active.")
             return
 
         if action == "close":
             reply = QMessageBox.question(
                 self, "Confirmer le retour",
-                f"Confirmer le retour de la ressource '{data['resource_name']}' ?",
+                f"Confirmer le retour de la ressource '{resource}' ?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
@@ -243,7 +277,7 @@ class AssignmentsView(QWidget):
         elif action == "cancel":
             reply = QMessageBox.question(
                 self, "Confirmer l'annulation",
-                f"Annuler l'affectation de '{data['resource_name']}' ?",
+                f"Annuler l'affectation de '{resource}' ?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
