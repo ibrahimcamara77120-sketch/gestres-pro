@@ -36,7 +36,7 @@ Application de bureau Python (PySide6) développée dans le cadre du BTS SIO.
 
 - **Python 3.11** — langage principal
 - **PySide6** — interface graphique
-- **SQLAlchemy** — ORM base de données SQLite
+- **SQLAlchemy + psycopg2** — ORM connecté à une base PostgreSQL
 - **ReportLab** — génération de PDF
 
 ## Lancer depuis le code source

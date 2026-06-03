@@ -152,6 +152,20 @@ class ResourceController:
             session.commit()
             return True, "Ressource retirée avec succès"
 
+    def get_resources_by_user(self, user_id: int) -> List[Dict[str, Any]]:
+        from src.models.assignment import Assignment
+        with get_session() as session:
+            subquery = (
+                session.query(Assignment.resource_id)
+                .filter_by(user_id=user_id, status="active")
+                .subquery()
+            )
+            resources = session.query(Resource).options(
+                joinedload(Resource.resource_type),
+                joinedload(Resource.company)
+            ).filter(Resource.id.in_(subquery)).all()
+            return [self._format_resource(r) for r in resources]
+
     def get_all_resource_types(self, company_id: Optional[int] = None) -> List[Dict[str, Any]]:
         with get_session() as session:
             query = session.query(ResourceType)

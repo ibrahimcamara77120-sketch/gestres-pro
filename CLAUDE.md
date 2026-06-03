@@ -10,7 +10,7 @@ Enterprise resource management desktop application (BTS SIO project). Centralize
 
 - **Language**: Python 3.14
 - **GUI Framework**: PySide6 (Qt for Python)
-- **Database**: SQLite with SQLAlchemy ORM
+- **Database**: PostgreSQL with SQLAlchemy ORM (driver psycopg2, URL `postgresql+psycopg2://` dans `config.py`)
 - **Architecture**: MVC pattern
 - **Password Hashing**: bcrypt
 

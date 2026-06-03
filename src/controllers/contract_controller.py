@@ -27,6 +27,15 @@ class ContractController:
             contracts = query.order_by(Contract.generated_at.desc()).all()
             return [self._format_contract(c) for c in contracts]
 
+    def get_contracts_by_user(self, user_id: int) -> List[Dict[str, Any]]:
+        with get_session() as session:
+            contracts = session.query(Contract).options(
+                joinedload(Contract.assignment)
+            ).join(Assignment).filter(
+                Assignment.user_id == user_id
+            ).order_by(Contract.generated_at.desc()).all()
+            return [self._format_contract(c) for c in contracts]
+
     def get_contracts_by_assignment(self, assignment_id: int) -> List[Dict[str, Any]]:
         with get_session() as session:
             contracts = session.query(Contract).filter_by(
@@ -112,8 +121,10 @@ class ContractController:
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib.units import cm
             from reportlab.lib import colors
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
+            from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                            HRFlowable, Table, TableStyle, KeepTogether)
             from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+            from reportlab.platypus.flowables import Flowable
         except ImportError:
             return False, "reportlab non installé — pip install reportlab"
 
@@ -127,11 +138,38 @@ class ContractController:
 
             a = session.query(Assignment).options(
                 joinedload(Assignment.resource),
-                joinedload(Assignment.user)
+                joinedload(Assignment.user),
+                joinedload(Assignment.assigner),
+                joinedload(Assignment.resource).joinedload(Assignment.resource.property.mapper.class_.resource_type)
             ).filter_by(id=contract.assignment_id).first()
 
             if not a:
                 return False, "Affectation associée introuvable"
+
+            # Extraire les données
+            user_name    = a.user.full_name if a.user else "—"
+            user_email   = a.user.email if a.user else "—"
+            assigner     = a.assigner.full_name if a.assigner else "—"
+            res_name     = a.resource.name if a.resource else "—"
+            res_serial   = (a.resource.serial_number or "Non renseigné") if a.resource else "—"
+            res_type     = (a.resource.resource_type.name
+                            if a.resource and a.resource.resource_type else "—")
+            date_debut   = a.start_date.strftime("%d/%m/%Y") if a.start_date else "—"
+            date_fin     = a.end_date.strftime("%d/%m/%Y") if a.end_date else "Non définie"
+            gen_date     = contract.generated_at.strftime("%d/%m/%Y à %H:%M") if contract.generated_at else "—"
+
+            # Extraire objet / conditions / notes du contenu texte
+            objet = conditions = notes_txt = ""
+            current = None
+            for line in contract.content.split("\n"):
+                line = line.strip()
+                if line.startswith("OBJET :"):        current = "o"; continue
+                if line.startswith("CONDITIONS :"):   current = "c"; continue
+                if line.startswith("NOTES :"):        current = "n"; continue
+                if line.startswith("---") or not line: continue
+                if current == "o": objet      += line + " "
+                if current == "c": conditions += line + " "
+                if current == "n": notes_txt  += line + " "
 
             pdf_dir = config.BASE_DIR / "contracts"
             pdf_dir.mkdir(exist_ok=True)
@@ -140,151 +178,202 @@ class ContractController:
                 pdf_path = Path(output_path)
             else:
                 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                pdf_path = pdf_dir / f"contrat_{contract_id}_{ts}.pdf"
+                pdf_path = pdf_dir / f"contrat_{contract_id:04d}_{ts}.pdf"
+
+            # ── Couleurs ──────────────────────────────────────────────
+            NAVY    = colors.HexColor("#1e3a5f")
+            BLUE    = colors.HexColor("#2563eb")
+            LIGHT   = colors.HexColor("#eff6ff")
+            GRAY_BG = colors.HexColor("#f8fafc")
+            GRAY    = colors.HexColor("#64748b")
+            DARK    = colors.HexColor("#0f172a")
+            WHITE   = colors.white
+            GREEN   = colors.HexColor("#10b981")
+            BORDER  = colors.HexColor("#dbeafe")
+
+            W = A4[0] - 4*cm  # largeur utile
+
+            # ── Styles ────────────────────────────────────────────────
+            def _style(name, **kw):
+                base = getSampleStyleSheet()["Normal"]
+                return ParagraphStyle(name, parent=base, **kw)
+
+            s_ref      = _style("ref",      fontSize=9,  textColor=GRAY,  alignment=TA_RIGHT)
+            s_section  = _style("sec",      fontSize=11, textColor=BLUE,  fontName="Helvetica-Bold",
+                                spaceBefore=14, spaceAfter=6)
+            s_label    = _style("lbl",      fontSize=9,  textColor=GRAY)
+            s_value    = _style("val",      fontSize=11, textColor=DARK,  fontName="Helvetica-Bold", spaceAfter=2)
+            s_body     = _style("body",     fontSize=10, textColor=DARK,  leading=15, spaceAfter=6)
+            s_footer   = _style("footer",   fontSize=8,  textColor=GRAY,  alignment=TA_CENTER)
+            s_signed   = _style("signed",   fontSize=10, textColor=GREEN, fontName="Helvetica-Bold",
+                                alignment=TA_CENTER)
+            s_sig_lbl  = _style("siglbl",   fontSize=9,  textColor=GRAY,  alignment=TA_CENTER)
+            s_sig_name = _style("signame",  fontSize=10, textColor=DARK,  fontName="Helvetica-Bold",
+                                alignment=TA_CENTER)
+
+            # ── Helper : bloc info avec fond gris ─────────────────────
+            def info_table(rows):
+                data = [[Paragraph(lbl, s_label), Paragraph(val, s_value)] for lbl, val in rows]
+                t = Table(data, colWidths=[4*cm, W - 4*cm])
+                t.setStyle(TableStyle([
+                    ("BACKGROUND",   (0,0), (-1,-1), GRAY_BG),
+                    ("ROWBACKGROUNDS",(0,0),(-1,-1), [GRAY_BG, WHITE]),
+                    ("BOX",          (0,0), (-1,-1), 0.5, BORDER),
+                    ("LINEBELOW",    (0,0), (-1,-2), 0.3, BORDER),
+                    ("TOPPADDING",   (0,0), (-1,-1), 6),
+                    ("BOTTOMPADDING",(0,0), (-1,-1), 6),
+                    ("LEFTPADDING",  (0,0), (-1,-1), 10),
+                    ("RIGHTPADDING", (0,0), (-1,-1), 10),
+                    ("VALIGN",       (0,0), (-1,-1), "MIDDLE"),
+                ]))
+                return t
+
+            # ── Construction du document ──────────────────────────────
+            story = []
+
+            # === EN-TÊTE BLEU ===
+            header_data = [[
+                Paragraph("<font color='white'><b>GestRes Pro</b></font>", _style("h1", fontSize=18, textColor=WHITE, fontName="Helvetica-Bold")),
+                Paragraph(f"<font color='white'>CONTRAT-{contract_id:04d}</font>",
+                          _style("h2", fontSize=14, textColor=WHITE, alignment=TA_RIGHT, fontName="Helvetica-Bold")),
+            ]]
+            header = Table(header_data, colWidths=[W/2, W/2])
+            header.setStyle(TableStyle([
+                ("BACKGROUND",    (0,0), (-1,-1), NAVY),
+                ("TOPPADDING",    (0,0), (-1,-1), 16),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 16),
+                ("LEFTPADDING",   (0,0), (-1,-1), 16),
+                ("RIGHTPADDING",  (0,0), (-1,-1), 16),
+                ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+            ]))
+            story.append(header)
+
+            # Sous-titre
+            sub_data = [[
+                Paragraph("Contrat d'affectation de ressource",
+                          _style("sub", fontSize=10, textColor=WHITE, fontName="Helvetica")),
+                Paragraph(f"Généré le {gen_date}",
+                          _style("sub2", fontSize=9, textColor=colors.HexColor("#93c5fd"), alignment=TA_RIGHT)),
+            ]]
+            sub = Table(sub_data, colWidths=[W/2, W/2])
+            sub.setStyle(TableStyle([
+                ("BACKGROUND",    (0,0), (-1,-1), BLUE),
+                ("TOPPADDING",    (0,0), (-1,-1), 8),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+                ("LEFTPADDING",   (0,0), (-1,-1), 16),
+                ("RIGHTPADDING",  (0,0), (-1,-1), 16),
+            ]))
+            story.append(sub)
+            story.append(Spacer(1, 0.5*cm))
+
+            # === PARTIES ===
+            story.append(Paragraph("Parties concernées", s_section))
+            story.append(info_table([
+                ("Bénéficiaire",  user_name),
+                ("Email",         user_email),
+                ("Responsable",   assigner),
+            ]))
+            story.append(Spacer(1, 0.4*cm))
+
+            # === RESSOURCE ===
+            story.append(Paragraph("Ressource concernée", s_section))
+            story.append(info_table([
+                ("Désignation",      res_name),
+                ("Type",             res_type),
+                ("N° de série",      res_serial),
+                ("Date de début",    date_debut),
+                ("Date de fin",      date_fin),
+            ]))
+            story.append(Spacer(1, 0.4*cm))
+
+            # === OBJET ===
+            if objet.strip():
+                story.append(Paragraph("Objet du contrat", s_section))
+                story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
+                story.append(Spacer(1, 0.2*cm))
+                story.append(Paragraph(objet.strip(), s_body))
+                story.append(Spacer(1, 0.2*cm))
+
+            # === CONDITIONS ===
+            if conditions.strip():
+                story.append(Paragraph("Conditions d'utilisation", s_section))
+                story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
+                story.append(Spacer(1, 0.2*cm))
+                story.append(Paragraph(conditions.strip(), s_body))
+                story.append(Spacer(1, 0.2*cm))
+
+            # === NOTES ===
+            if notes_txt.strip() and notes_txt.strip() != "Aucune note particulière.":
+                story.append(Paragraph("Notes et clauses particulières", s_section))
+                story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
+                story.append(Spacer(1, 0.2*cm))
+                story.append(Paragraph(notes_txt.strip(), s_body))
+                story.append(Spacer(1, 0.2*cm))
+
+            # === SIGNATURE ÉLECTRONIQUE ===
+            if contract.is_signed and contract.signed_at:
+                story.append(Spacer(1, 0.3*cm))
+                signed_box = Table([[
+                    Paragraph(
+                        f"✔  Contrat signé électroniquement le "
+                        f"{contract.signed_at.strftime('%d/%m/%Y à %H:%M UTC')}",
+                        s_signed)
+                ]], colWidths=[W])
+                signed_box.setStyle(TableStyle([
+                    ("BACKGROUND",    (0,0), (-1,-1), colors.HexColor("#d1fae5")),
+                    ("BOX",           (0,0), (-1,-1), 1, GREEN),
+                    ("TOPPADDING",    (0,0), (-1,-1), 10),
+                    ("BOTTOMPADDING", (0,0), (-1,-1), 10),
+                ]))
+                story.append(signed_box)
+                story.append(Spacer(1, 0.3*cm))
+
+            # === ZONE SIGNATURES ===
+            story.append(Spacer(1, 0.5*cm))
+            story.append(Paragraph("Signatures", s_section))
+            story.append(Spacer(1, 0.2*cm))
+
+            sig_col = (W - 0.8*cm) / 2
+            sig_data = [
+                [Paragraph("Le bénéficiaire", s_sig_lbl),   Paragraph("Le responsable", s_sig_lbl)],
+                [Spacer(1, 2.5*cm),                          Spacer(1, 2.5*cm)],
+                [Paragraph(user_name, s_sig_name),           Paragraph(assigner, s_sig_name)],
+                [Paragraph("Date : _____ / _____ / _____",  s_sig_lbl),
+                 Paragraph("Date : _____ / _____ / _____",  s_sig_lbl)],
+            ]
+            sig_table = Table(sig_data, colWidths=[sig_col, sig_col], spaceBefore=0)
+            sig_table.setStyle(TableStyle([
+                ("BOX",           (0,0), (0,-1), 1, BORDER),
+                ("BOX",           (1,0), (1,-1), 1, BORDER),
+                ("BACKGROUND",    (0,0), (-1, 0), LIGHT),
+                ("BACKGROUND",    (0,2), (-1,-1), GRAY_BG),
+                ("ALIGN",         (0,0), (-1,-1), "CENTER"),
+                ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+                ("TOPPADDING",    (0,0), (-1,-1), 8),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+                ("LEFTPADDING",   (0,0), (-1,-1), 4),
+                ("RIGHTPADDING",  (0,0), (-1,-1), 4),
+                ("COLPADDING",    (0,0), (-1,-1), 20),
+            ]))
+            story.append(sig_table)
+
+            # === PIED DE PAGE ===
+            story.append(Spacer(1, 0.8*cm))
+            story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
+            story.append(Spacer(1, 0.2*cm))
+            story.append(Paragraph(
+                f"GestRes Pro — BTS SIO SLAM 2026  |  "
+                f"Réf. CONTRAT-{contract_id:04d}  |  "
+                f"Hash SHA-256 : {contract.content_hash[:24]}...",
+                s_footer
+            ))
 
             doc = SimpleDocTemplate(
                 str(pdf_path),
                 pagesize=A4,
                 rightMargin=2*cm, leftMargin=2*cm,
-                topMargin=2*cm, bottomMargin=2*cm
+                topMargin=1.5*cm, bottomMargin=1.5*cm
             )
-
-            styles = getSampleStyleSheet()
-            title_style = ParagraphStyle(
-                "title", parent=styles["Heading1"],
-                fontSize=20, textColor=colors.HexColor("#1e293b"),
-                spaceAfter=6, alignment=TA_CENTER
-            )
-            subtitle_style = ParagraphStyle(
-                "subtitle", parent=styles["Normal"],
-                fontSize=11, textColor=colors.HexColor("#64748b"),
-                spaceAfter=20, alignment=TA_CENTER
-            )
-            section_style = ParagraphStyle(
-                "section", parent=styles["Heading2"],
-                fontSize=13, textColor=colors.HexColor("#2563eb"),
-                spaceBefore=16, spaceAfter=8
-            )
-            body_style = ParagraphStyle(
-                "body", parent=styles["Normal"],
-                fontSize=11, textColor=colors.HexColor("#1e293b"),
-                spaceAfter=8, leading=16
-            )
-            label_style = ParagraphStyle(
-                "label", parent=styles["Normal"],
-                fontSize=10, textColor=colors.HexColor("#64748b"),
-                spaceAfter=4
-            )
-            value_style = ParagraphStyle(
-                "value", parent=styles["Normal"],
-                fontSize=11, textColor=colors.HexColor("#1e293b"),
-                spaceAfter=10, fontName="Helvetica-Bold"
-            )
-            footer_style = ParagraphStyle(
-                "footer", parent=styles["Normal"],
-                fontSize=9, textColor=colors.HexColor("#94a3b8"),
-                alignment=TA_CENTER
-            )
-
-            story = []
-
-            story.append(Spacer(1, 0.5*cm))
-            story.append(Paragraph("GestRes Pro", title_style))
-            story.append(Paragraph("Contrat d'affectation de ressource", subtitle_style))
-            story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor("#2563eb")))
-            story.append(Spacer(1, 0.5*cm))
-
-            ref = f"Réf. CONTRAT-{contract_id:04d} — généré le {contract.generated_at.strftime('%d/%m/%Y à %H:%M')}"
-            story.append(Paragraph(ref, label_style))
-            story.append(Spacer(1, 0.3*cm))
-
-            story.append(Paragraph("Parties concernées", section_style))
-            parties_data = [
-                ["Bénéficiaire :", a.user.full_name if a.user else "—"],
-                ["Email :", a.user.email if a.user else "—"],
-                ["Affectée par :", a.assigner.full_name if a.assigner else "—"],
-            ]
-            for label, value in parties_data:
-                story.append(Paragraph(label, label_style))
-                story.append(Paragraph(value, value_style))
-
-            story.append(Paragraph("Ressource concernée", section_style))
-            resource_data = [
-                ["Nom :", a.resource.name if a.resource else "—"],
-                ["N° de série :", a.resource.serial_number or "Non renseigné" if a.resource else "—"],
-                ["Type :", a.resource.resource_type.name if (a.resource and a.resource.resource_type) else "—"],
-                ["Date de début :", a.start_date.strftime("%d/%m/%Y") if a.start_date else "—"],
-                ["Date de fin prévue :", a.end_date.strftime("%d/%m/%Y") if a.end_date else "Non définie"],
-            ]
-            for label, value in resource_data:
-                story.append(Paragraph(label, label_style))
-                story.append(Paragraph(value, value_style))
-
-            lines = contract.content.split("\n")
-            current_section = None
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                if line.startswith("OBJET :"):
-                    story.append(Paragraph("Objet du contrat", section_style))
-                    current_section = "objet"
-                elif line.startswith("CONDITIONS :"):
-                    story.append(Paragraph("Conditions d'utilisation", section_style))
-                    current_section = "conditions"
-                elif line.startswith("NOTES :"):
-                    story.append(Paragraph("Notes et clauses particulières", section_style))
-                    current_section = "notes"
-                elif line.startswith("---"):
-                    current_section = None
-                elif current_section:
-                    story.append(Paragraph(line, body_style))
-
-            story.append(Spacer(1, 1*cm))
-            story.append(Paragraph("Signatures", section_style))
-            story.append(Spacer(1, 0.3*cm))
-
-            sig_table_data = [
-                [
-                    Paragraph("Le bénéficiaire", label_style),
-                    Paragraph("Le responsable", label_style)
-                ],
-                [Spacer(1, 2*cm), Spacer(1, 2*cm)],
-                [
-                    Paragraph(f"Nom : {a.user.full_name if a.user else '_______________'}", body_style),
-                    Paragraph(f"Nom : {a.assigner.full_name if a.assigner else '_______________'}", body_style)
-                ],
-                [
-                    Paragraph("Signature : _______________", body_style),
-                    Paragraph("Signature : _______________", body_style)
-                ],
-            ]
-
-            if contract.is_signed and contract.signed_at:
-                sig_info = Paragraph(
-                    f"Signé électroniquement le {contract.signed_at.strftime('%d/%m/%Y à %H:%M')}",
-                    ParagraphStyle("signed", parent=body_style,
-                                   textColor=colors.HexColor("#10b981"), fontName="Helvetica-Bold")
-                )
-                story.append(sig_info)
-                story.append(Spacer(1, 0.3*cm))
-
-            sig_table = Table(sig_table_data, colWidths=[8*cm, 8*cm])
-            sig_table.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ]))
-            story.append(sig_table)
-
-            story.append(Spacer(1, 1*cm))
-            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e2e8f0")))
-            story.append(Spacer(1, 0.3*cm))
-            story.append(Paragraph(
-                f"Document généré par GestRes Pro — Hash d'intégrité SHA-256 : {contract.content_hash[:16]}...",
-                footer_style
-            ))
-
             doc.build(story)
 
             contract.pdf_path = str(pdf_path)

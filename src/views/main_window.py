@@ -45,15 +45,18 @@ class MainWindow(QMainWindow):
         self.dashboard_view.logout_requested.connect(self._on_logout_requested)
 
     def _check_initial_setup(self):
-        from src.models.base import get_session
-        from src.models.user import User, Role
+        try:
+            from src.models.base import get_session
+            from src.models.user import User, Role
 
-        with get_session() as session:
-            super_admin_role = session.query(Role).filter_by(name="super_admin").first()
-            if super_admin_role:
-                existing = session.query(User).filter_by(role_id=super_admin_role.id).first()
-                if not existing:
-                    self._create_initial_admin()
+            with get_session() as session:
+                super_admin_role = session.query(Role).filter_by(name="super_admin").first()
+                if super_admin_role:
+                    existing = session.query(User).filter_by(role_id=super_admin_role.id).first()
+                    if not existing:
+                        self._create_initial_admin()
+        except Exception:
+            pass
 
     def _create_initial_admin(self):
         msg = QMessageBox(self)
@@ -141,9 +144,14 @@ class MainWindow(QMainWindow):
             self._create_initial_admin()
 
     def _on_login_successful(self):
-        self.dashboard_view.refresh()
-        self.stack.setCurrentWidget(self.dashboard_view)
-        self.setWindowTitle(f"GestRes Pro - {auth_controller.current_user.full_name}")
+        try:
+            self.dashboard_view.refresh()
+            self.stack.setCurrentWidget(self.dashboard_view)
+            self.setWindowTitle(f"GestRes Pro - {auth_controller.current_user.full_name}")
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Impossible de charger le tableau de bord :\n{e}")
+            auth_controller.logout()
+            self.login_view.reset()
 
     def _on_logout_requested(self):
         auth_controller.logout()

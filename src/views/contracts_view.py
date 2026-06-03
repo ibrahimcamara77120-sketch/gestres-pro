@@ -202,7 +202,6 @@ class SignContractDialog(QDialog):
         form = QFormLayout()
         form.setSpacing(14)
 
-        self.name_input = QTextEdit.__class__.__mro__  # placeholder init
         from PySide6.QtWidgets import QLineEdit
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Nom et prénom du signataire")
@@ -266,6 +265,8 @@ class ContractsView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        user = auth_controller.current_user
+        self._is_employee = user is not None and user.role.name == "employee"
         self._setup_ui()
         self.load_data()
 
@@ -274,7 +275,7 @@ class ContractsView(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
 
-        title = QLabel("Contrats")
+        title = QLabel("Mes contrats" if self._is_employee else "Contrats")
         title.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {COLORS['text_primary']}; background: transparent;")
         layout.addWidget(title)
 
@@ -292,15 +293,23 @@ class ContractsView(QWidget):
              "formatter": lambda v, r: "✅" if v else "❌"},
         ]
 
-        self.table = DataTable(columns, title="Liste des contrats", page_size=15)
-        self.table.set_actions([
-            {"name": "sign", "icon": "✍️", "label": "Signer", "color": COLORS["success"]},
-            {"name": "export", "icon": "📄", "label": "Exporter PDF", "color": COLORS["primary"]},
-            {"name": "verify", "icon": "🔍", "label": "Vérifier intégrité", "color": COLORS["info"]},
-        ])
+        self.table = DataTable(columns, title="Mes contrats" if self._is_employee else "Liste des contrats",
+                               show_add_button=not self._is_employee, page_size=15)
 
-        self.table.add_button.setText("+ Générer un contrat")
-        self.table.add_clicked.connect(self._on_add)
+        if self._is_employee:
+            self.table.set_actions([
+                {"name": "sign",   "icon": "✍️", "label": "Signer",          "color": COLORS["success"]},
+                {"name": "export", "icon": "📄", "label": "Exporter PDF",     "color": COLORS["primary"]},
+            ])
+        else:
+            self.table.set_actions([
+                {"name": "sign",   "icon": "✍️", "label": "Signer",             "color": COLORS["success"]},
+                {"name": "export", "icon": "📄", "label": "Exporter PDF",        "color": COLORS["primary"]},
+                {"name": "verify", "icon": "🔍", "label": "Vérifier intégrité",  "color": COLORS["info"]},
+            ])
+            self.table.add_button.setText("+ Générer un contrat")
+            self.table.add_clicked.connect(self._on_add)
+
         self.table.refresh_clicked.connect(self.load_data)
         self.table.action_triggered.connect(self._on_action)
 
@@ -308,7 +317,11 @@ class ContractsView(QWidget):
 
     def load_data(self):
         try:
-            contracts = contract_controller.get_all_contracts()
+            user = auth_controller.current_user
+            if self._is_employee and user:
+                contracts = contract_controller.get_contracts_by_user(user.id)
+            else:
+                contracts = contract_controller.get_all_contracts()
             self.table.set_data(contracts)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible de charger les contrats : {e}")

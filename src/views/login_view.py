@@ -278,18 +278,23 @@ class LoginView(QWidget):
         self.login_button.setEnabled(False)
         self.login_button.setText("Connexion…")
 
-        success, message = auth_controller.login(email, password)
+        try:
+            success, message = auth_controller.login(email, password)
 
-        if success:
-            self._clear_error()
-            self.login_successful.emit()
-        else:
-            self._show_error(message)
+            if success:
+                self._clear_error()
+                self.login_successful.emit()
+            else:
+                self._show_error(message)
+                self.password_input.clear()
+                self.password_input.setFocus()
+        except Exception:
+            self._show_error("Erreur de connexion à la base de données. Veuillez réessayer.")
             self.password_input.clear()
             self.password_input.setFocus()
-
-        self.login_button.setEnabled(True)
-        self.login_button.setText("Se connecter")
+        finally:
+            self.login_button.setEnabled(True)
+            self.login_button.setText("Se connecter")
 
     def _show_error(self, message: str):
         self.error_label.setText(message)

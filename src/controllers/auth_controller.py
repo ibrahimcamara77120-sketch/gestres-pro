@@ -104,13 +104,17 @@ class AuthController:
             session.add(log)
             session.commit()
 
+            from src.models.company import Company
             self._current_user = session.query(User).options(
-                joinedload(User.role)
+                joinedload(User.role),
+                joinedload(User.company)
             ).filter_by(id=user.id).first()
             self._session_token = token
 
             session.expunge(self._current_user)
             session.expunge(self._current_user.role)
+            if self._current_user.company is not None:
+                session.expunge(self._current_user.company)
 
             return True, f"Bienvenue, {self._current_user.full_name}!"
 
@@ -209,9 +213,7 @@ class AuthController:
 
             log = AuditLog.log(action="PASSWORD_CHANGE", user_id=user.id,
                                table_name="users", record_id=user.id)
-            s
-
-            ession.add(log)
+            session.add(log)
             session.commit()
 
             return True, "Mot de passe modifié avec succès"
