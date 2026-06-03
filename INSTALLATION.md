@@ -80,7 +80,7 @@ GestRes-Pro/
 ├── main.py                 # Point d'entrée
 ├── config.py               # Configuration
 ├── requirements.txt        # Dépendances
-├── database.db             # Base SQLite (créée automatiquement)
+├── config.py               # URL de connexion PostgreSQL (postgresql+psycopg2://...)
 ├── src/
 │   ├── models/             # Modèles de données
 │   ├── views/              # Interfaces graphiques
@@ -105,8 +105,10 @@ source .venv/bin/activate && python3 -m pytest tests/ -v
 
 ### Réinitialiser la base de données
 ```bash
-rm database.db
-python3 main.py  # Recrée automatiquement
+# Se connecter à PostgreSQL et supprimer/recréer la base
+psql -U postgres -c "DROP DATABASE IF EXISTS gestres_db;"
+psql -U postgres -c "CREATE DATABASE gestres_db OWNER gestres_user;"
+python3 main.py  # Recrée le schéma via SQLAlchemy
 ```
 
 ---
@@ -121,12 +123,13 @@ pip install -r requirements.txt
 
 ### Erreur de base de données
 ```bash
-rm database.db
+# Vérifier que PostgreSQL tourne et que les variables dans config.py sont correctes
+psql -U gestres_user -d gestres_db -c "\dt"
 python3 main.py
 ```
 
 ### Mot de passe oublié
-Supprimez `database.db` et recréez un super administrateur.
+Connectez-vous à PostgreSQL et remettez à zéro le super administrateur via `seed_test_company.py`.
 
 ---
 

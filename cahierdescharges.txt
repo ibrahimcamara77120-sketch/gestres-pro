@@ -50,7 +50,7 @@ Langage : Python
 
 Interface : Desktop (PySide6)
 
-Base de données : SQLite
+Base de données : PostgreSQL
 
 ORM : SQLAlchemy
 
@@ -98,7 +98,7 @@ Sauvegarde locale
 
 Application locale macOS (.app)
 
-Base SQLite intégrée
+Base PostgreSQL locale
 
 Documentation utilisateur
 
@@ -128,7 +128,7 @@ API REST
 
 Choix de la BDD
 
-Type : SQLite
+Type : PostgreSQL
 
 🧠 CONCEPT DU PROJET (VALIDÉ)
 Gestionnaire universel de ressources numériques et matérielles d’entreprise
@@ -331,7 +331,7 @@ Identité pro (outil pro)
 🟢 RÉALISABILITÉ (IMPORTANT)
 
 ✔️ 100 % faisable en local sur macOS
-✔️ Python + SQLite
+✔️ Python + PostgreSQL
 ✔️ Interface desktop
 ✔️ Générable en application .app
 ✔️ Hébergeable plus tard (Flask / FastAPI)

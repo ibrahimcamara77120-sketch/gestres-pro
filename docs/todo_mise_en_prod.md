@@ -317,8 +317,7 @@ except Exception as e:
 
 ### 13. Sauvegarde automatique de la base de données
 
-La base est un fichier SQLite local. Sans sauvegarde, une suppression accidentelle
-ou une panne disque fait tout perdre.
+La base PostgreSQL est hébergée localement. Sans sauvegarde, une corruption ou panne disque fait tout perdre.
 
 **Implémentation simple :**
 ```python

@@ -355,7 +355,7 @@ def section_02():
     contraintes = [
         "Conformité RGPD / CNIL : minimisation des données, droit à l'oubli, journaux d'accès",
         "Sécurité : aucune requête SQL brute, mots de passe hachés, intégrité des contrats",
-        "Portabilité : application bureau autonome, base de données locale SQLite",
+        "Portabilité : application bureau autonome, base de données PostgreSQL (psycopg2)",
         "Traçabilité : chaque action sur une ressource est enregistrée dans un journal d'audit",
         "Multi-entreprise : chaque société dispose de son espace de données isolé",
     ]
@@ -382,7 +382,7 @@ def section_03():
         ["Couche",          "Technologie",             "Rôle"],
         ["Langage",         "Python 3.14",             "Langage principal"],
         ["Interface graphique", "PySide6 ≥ 6.6",      "Framework Qt — vues et widgets"],
-        ["ORM / Base de données", "SQLAlchemy 2.0 + SQLite 3", "Modèles, requêtes, migrations"],
+        ["ORM / Base de données", "SQLAlchemy 2.0 + PostgreSQL", "Modèles, requêtes, triggers PL/pgSQL"],
         ["Hachage",         "bcrypt 4.1 (rounds=12)",  "Sécurisation des mots de passe"],
         ["PDF",             "ReportLab 4.0 + PyMuPDF 1.27", "Génération et remplissage de contrats"],
         ["Tests",           "pytest 155 tests",        "Tests unitaires et d'intégration"],
@@ -453,7 +453,7 @@ def section_03():
          "4 modules",
          ["security.py — bcrypt, SHA-256, validation SIRET, sanitize_input()",
           "validators.py — validation email, SIRET, forces de mot de passe",
-          "backup.py — sauvegarde automatique de la BDD SQLite",
+          "backup.py — sauvegarde automatique de la BDD PostgreSQL",
           "maintenance.py — purge RGPD, anonymisation, nettoyage"]),
     ]
     for titre, sous, items in mvc:
@@ -656,7 +656,7 @@ def section_06():
         ["test_models.py",      "Tests des 10 modèles SQLAlchemy",    "Création, contraintes, relations"],
         ["test_controllers.py", "Tests des 6 contrôleurs",            "CRUD, authentification, permissions"],
         ["test_security.py",    "Tests des utilitaires de sécurité",  "Hachage, validation, sanitisation"],
-        ["conftest.py",         "Fixture SQLite in-memory",           "Isolation totale — database.db jamais touché"],
+        ["conftest.py",         "Fixture SQLite in-memory (tests)",   "Isolation totale — BDD PostgreSQL de prod jamais touchée"],
     ]
     rows = []
     for i, row in enumerate(tests):
@@ -868,11 +868,13 @@ def page_questions():
     e.append(hr())
 
     qa = [
-        ("Pourquoi SQLite et pas PostgreSQL ou MySQL ?",
-         "SQLite est parfait pour une application de bureau mono-poste : zéro configuration, "
-         "fichier unique, transactions ACID, suffisant pour des milliers de ressources. "
-         "SQLAlchemy permet de migrer vers PostgreSQL sans changer le code applicatif si "
-         "l'application évolue vers une version multi-poste."),
+        ("Pourquoi PostgreSQL et pas SQLite ou MySQL ?",
+         "PostgreSQL a été choisi pour répondre aux critères E6 : contraintes d'intégrité avancées, "
+         "triggers PL/pgSQL (audit automatique, cohérence des statuts), vues métier, fonctions RGPD "
+         "intégrées côté base. SQLite a servi en phase de prototypage initial, mais la migration vers "
+         "PostgreSQL permet un déploiement multi-poste et une conformité complète. "
+         "Les tests conservent SQLite in-memory pour rester rapides et isolés — c'est une stratégie "
+         "délibérée, pas un résidu."),
         ("Comment garantissez-vous la conformité RGPD en pratique ?",
          "Trois mécanismes concrets : (1) module maintenance.py avec anonymisation et purge "
          "automatique selon les délais légaux, (2) journal d'audit tracant chaque accès aux "

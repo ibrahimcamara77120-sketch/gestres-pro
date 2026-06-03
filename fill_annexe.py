@@ -63,7 +63,7 @@ T(p1, 51, 252,
 rc6 = TB(p1, 52, 369, 543, 434,
          "Projet développé seul dans le cadre du BTS SIO option SLAM (épreuve E6) "
          "— année scolaire 2025-2026.\n"
-         "Environnement technique : Python 3.14 · PySide6 (Qt 6) · SQLite / "
+         "Environnement technique : Python 3.14 · PySide6 (Qt 6) · PostgreSQL / "
          "SQLAlchemy ORM · bcrypt · ReportLab · python-dateutil · pytest.\n"
          "IDE : PyCharm Professional · Contrôle de version : Git / GitHub.\n"
          "Résultat attendu : application desktop de gestion de ressources "
@@ -75,7 +75,7 @@ if rc6 < 0:
 
 rc7 = TB(p1, 52, 452, 543, 596,
          "Langages & frameworks : Python 3.14 · PySide6 6.x (Qt for Python) "
-         "· SQLAlchemy 2.x ORM · SQLite 3.\n"
+         "· SQLAlchemy 2.x ORM · PostgreSQL (psycopg2).\n"
          "Sécurité : bcrypt (hachage mots de passe) · secrets.token_hex (sessions) "
          "· hashlib SHA-256 (intégrité des contrats).\n"
          "Génération de documents : ReportLab (PDF contrats — dépendance production).\n"
@@ -83,7 +83,7 @@ rc7 = TB(p1, 52, 452, 543, 596,
          "en mémoire isolée (conftest.py autouse fixture).\n"
          "Outils : Git / GitHub · PyCharm Professional (IDE) · VS Code.\n"
          "Matériel : MacBook Pro — macOS Sequoia 15.1 — développement local, "
-         "base SQLite fichier (database.db).\n"
+         "base PostgreSQL locale (config.py, URL postgresql+psycopg2://).\n"
          "Documentation : FEATURES.md · INSTALLATION.md "
          "· docs/rapport_tests.md · docs/tableau_synthese_e5.xlsx.",
          size=8.4)
