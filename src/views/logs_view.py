@@ -9,27 +9,24 @@ from src.views.styles import COLORS
 from src.views.widgets.data_table import DataTable
 from src.models.base import get_session
 from src.models.audit_log import AuditLog
-from src.models.user import User
+from src.models.user import User, Role
 
 
-ACTIONS = [
-    "LOGIN", "LOGOUT", "LOGIN_FAILED",
-    "CREATE", "UPDATE", "DELETE",
-    "PASSWORD_CHANGE", "PASSWORD_RESET"
-]
+CONNEXION_ACTIONS = ["LOGIN", "LOGOUT", "LOGIN_FAILED"]
+ADMIN_ROLES = ("super_admin", "admin")
+
+ROLE_LABELS = {
+    "super_admin": "Super Administrateur",
+    "admin":       "Responsable",
+}
 
 
 class LogsView(QWidget):
 
     _ACTION_BADGE = {
-        "LOGIN":           ("#059669", "#d1fae5"),
-        "LOGOUT":          ("#64748b", "#f1f5f9"),
-        "LOGIN_FAILED":    ("#dc2626", "#fee2e2"),
-        "CREATE":          ("#4f46e5", "#eef2ff"),
-        "UPDATE":          ("#d97706", "#fef3c7"),
-        "DELETE":          ("#dc2626", "#fee2e2"),
-        "PASSWORD_CHANGE": ("#0284c7", "#e0f2fe"),
-        "PASSWORD_RESET":  ("#0284c7", "#e0f2fe"),
+        "LOGIN":        ("#059669", "#d1fae5"),
+        "LOGOUT":       ("#64748b", "#f1f5f9"),
+        "LOGIN_FAILED": ("#dc2626", "#fee2e2"),
     }
 
     def __init__(self, parent=None):
@@ -48,7 +45,7 @@ class LogsView(QWidget):
 
         # Header with export button
         header_frame = _page_header("📊  Journaux d'audit",
-                                    "Traçabilité complète de toutes les actions utilisateurs")
+                                    "Connexions des Super Administrateurs et Responsables")
         # Inject export button into the header frame
         export_btn = QPushButton("⬇️  Exporter CSV")
         export_btn.setFixedHeight(36)
@@ -87,18 +84,21 @@ class LogsView(QWidget):
         inner_layout.setSpacing(0)
 
         columns = [
-            {"key": "created_at", "label": "🕐  Date / Heure",  "width": 165},
-            {"key": "action",     "label": "⚡  Action",         "width": 160},
+            {"key": "created_at", "label": "🕐  Date / Heure", "width": 165},
+            {"key": "action",     "label": "⚡  Action",        "width": 160},
             {"key": "user_name",  "label": "👤  Utilisateur"},
-            {"key": "table_name", "label": "🗄️  Table",         "width": 120},
-            {"key": "record_id",  "label": "ID",                 "width": 65},
+            {"key": "user_role",  "label": "🏷️  Rôle",          "width": 185},
             {"key": "ip_address", "label": "🌐  IP",             "width": 130},
         ]
 
-        self.table = DataTable(columns, title="Historique des actions",
+        self.table = DataTable(columns, title="Historique des connexions",
                                show_add_button=False, page_size=20)
 
-        self.table.add_filter("Action", [("Toutes les actions", None)] + [(a, a) for a in ACTIONS], "action")
+        self.table.add_filter(
+            "Action",
+            [("Toutes les connexions", None)] + [(a, a) for a in CONNEXION_ACTIONS],
+            "action"
+        )
 
         self.table.set_actions([])
         self.table.refresh_clicked.connect(self.load_data)
@@ -109,12 +109,30 @@ class LogsView(QWidget):
     def load_data(self):
         try:
             with get_session() as session:
-                logs = session.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(500).all()
-                user_ids = {log.user_id for log in logs if log.user_id}
+                logs = (
+                    session.query(AuditLog)
+                    .join(User, AuditLog.user_id == User.id)
+                    .join(Role, User.role_id == Role.id)
+                    .filter(
+                        AuditLog.action.in_(CONNEXION_ACTIONS),
+                        Role.name.in_(ADMIN_ROLES),
+                    )
+                    .order_by(AuditLog.created_at.desc())
+                    .limit(500)
+                    .all()
+                )
+
+                user_ids = {log.user_id for log in logs}
                 users = {}
+                roles = {}
                 if user_ids:
-                    for user in session.query(User).filter(User.id.in_(user_ids)).all():
+                    for user in (
+                        session.query(User)
+                        .filter(User.id.in_(user_ids))
+                        .all()
+                    ):
                         users[user.id] = user.full_name
+                        roles[user.id] = ROLE_LABELS.get(user.role.name, user.role.name)
 
                 self._all_logs = []
                 for log in logs:
@@ -122,9 +140,8 @@ class LogsView(QWidget):
                         "id": log.id,
                         "created_at": log.created_at.strftime("%d/%m/%Y %H:%M:%S") if log.created_at else "",
                         "action": log.action,
-                        "user_name": users.get(log.user_id, "Système") if log.user_id else "Système",
-                        "table_name": log.table_name or "",
-                        "record_id": str(log.record_id) if log.record_id else "",
+                        "user_name": users.get(log.user_id, ""),
+                        "user_role": roles.get(log.user_id, ""),
                         "ip_address": log.ip_address or "",
                     })
 
@@ -154,7 +171,7 @@ class LogsView(QWidget):
         try:
             with open(path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=[
-                    "created_at", "action", "user_name", "table_name", "record_id", "ip_address"
+                    "created_at", "action", "user_name", "user_role", "ip_address"
                 ])
                 writer.writeheader()
                 for log in self._all_logs:
