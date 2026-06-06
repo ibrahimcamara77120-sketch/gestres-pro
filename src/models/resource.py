@@ -26,6 +26,7 @@ class Resource(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     serial_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="available", nullable=False)
+    criticite: Mapped[str] = mapped_column(String(10), default="normal", nullable=False)
     custom_data: Mapped[str | None] = mapped_column(Text, nullable=True)
     purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_of_life_date: Mapped[date | None] = mapped_column(Date, nullable=True)

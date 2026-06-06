@@ -17,7 +17,7 @@ DATABASE_URL = (
     f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-BCRYPT_ROUNDS = 12
+
 SESSION_DURATION_HOURS = 8
 PASSWORD_MIN_LENGTH = 8
 
@@ -52,6 +52,13 @@ RESOURCE_STATUS = {
     "assigned":    "Affectée",
     "maintenance": "En maintenance",
     "retired":     "Retirée"
+}
+
+CRITICITES = {
+    "faible":   "Faible",
+    "normal":   "Normal",
+    "haute":    "Haute",
+    "critique": "Critique"
 }
 
 ASSIGNMENT_STATUS = {

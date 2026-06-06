@@ -45,10 +45,13 @@ class ResourceController:
 
     def create_resource(self, company_id: int, resource_type_id: int, name: str,
                         serial_number: Optional[str] = None,
+                        criticite: str = "normal",
                         custom_data: Optional[dict] = None) -> Tuple[bool, str, Optional[int]]:
         name = sanitize_input(name)
         if not name or len(name) < 2:
             return False, "Nom requis (min 2 caractères)", None
+        if criticite not in config.CRITICITES:
+            return False, f"Criticité invalide : {criticite}", None
 
         with get_session() as session:
             company = session.query(Company).filter_by(id=company_id).first()
@@ -70,8 +73,10 @@ class ResourceController:
                 resource_type_id=resource_type_id,
                 name=name,
                 serial_number=serial_number,
-                status="available"
-            )
+                status="available",
+                criticite=criticite
+
+        )
             if custom_data:
                 resource.set_custom_data(custom_data)
 
@@ -89,6 +94,7 @@ class ResourceController:
     def update_resource(self, resource_id: int, name: Optional[str] = None,
                         status: Optional[str] = None,
                         serial_number: Optional[str] = None,
+                        criticite: Optional[str] = None,
                         custom_data: Optional[dict] = None) -> Tuple[bool, str]:
         with get_session() as session:
             resource = session.query(Resource).filter_by(id=resource_id).first()
@@ -107,6 +113,10 @@ class ResourceController:
                 if status not in config.RESOURCE_STATUS:
                     return False, f"Statut invalide : {status}"
                 resource.status = status
+                if criticite is not None:
+                    if criticite not in config.CRITICITES:
+                        return False, f"Criticité invalide : {criticite}"
+                    resource.criticite = criticite
 
             if serial_number is not None:
                 sn = sanitize_input(serial_number)
@@ -224,6 +234,8 @@ class ResourceController:
             "status": resource.status,
             "status_label": status_labels.get(resource.status, resource.status),
             "status_color": status_colors.get(resource.status, "#64748b"),
+            "criticite": resource.criticite,
+            "criticite_label": config.CRITICITES.get(resource.criticite, resource.criticite),
             "resource_type_id": resource.resource_type_id,
             "resource_type_name": resource.resource_type.name if resource.resource_type else "",
             "company_id": resource.company_id,
