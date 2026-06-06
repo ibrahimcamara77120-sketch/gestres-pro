@@ -1,5 +1,5 @@
 # AUDIT — GestRes Pro
-Date : 2026-06-03 | Auditeur : Claude Code
+Date : 2026-06-03 | Auditeur : Ibrahim CAMARA
 
 ---
 
