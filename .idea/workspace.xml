@@ -5,13 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="384ce49c-9e2d-42fb-ba3a-8cd82a24c628" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/docs/9 - ANNEXE VII - EPREUVE E6 PRATIQUE OPTION A ET OPTION B - BTS SIO 2026.docx.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/PythonProject.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PythonProject.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build_annexe.py" beforeDir="false" afterPath="$PROJECT_DIR$/build_annexe.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/newannex.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/docs/newannex.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fill_annexe.py" beforeDir="false" afterPath="$PROJECT_DIR$/fill_annexe.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/seed_test_company.py" beforeDir="false" afterPath="$PROJECT_DIR$/seed_test_company.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/presentation_gestres_pro.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/docs/presentation_gestres_pro.pdf" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,6 +28,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.GestRes Pro.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,

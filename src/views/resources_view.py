@@ -56,6 +56,10 @@ class ResourceFormDialog(QDialog):
         self.serial_input = QLineEdit()
         self.serial_input.setPlaceholderText("Numéro de série (optionnel)")
         form.addRow(self._label("N° de série"), self.serial_input)
+        self.criticite_combo = QComboBox()
+        for key, label in config.CRITICITES.items():
+            self.criticite_combo.addItem(label, key)
+        form.addRow(self._label("Criticité"), self.criticite_combo)
 
         if is_edit:
             self.status_combo = QComboBox()
@@ -122,6 +126,10 @@ class ResourceFormDialog(QDialog):
 
         self.name_input.setText(data.get("name", ""))
         self.serial_input.setText(data.get("serial_number", ""))
+        for i in range(self.criticite_combo.count()):
+            if self.criticite_combo.itemData(i) == data.get("criticite"):
+                self.criticite_combo.setCurrentIndex(i)
+                break
 
         if hasattr(self, "status_combo"):
             for i in range(self.status_combo.count()):
@@ -135,6 +143,7 @@ class ResourceFormDialog(QDialog):
         resource_type_id = self.type_combo.currentData()
         name = self.name_input.text().strip()
         serial = self.serial_input.text().strip() or None
+        criticite = self.criticite_combo.currentData()
 
         if not resource_type_id:
             self.error_label.setText("Veuillez d'abord créer un type de ressource pour cette entreprise.")
@@ -145,11 +154,11 @@ class ResourceFormDialog(QDialog):
             status = self.status_combo.currentData() if hasattr(self, "status_combo") else None
             success, msg = resource_controller.update_resource(
                 self._resource_data["id"],
-                name=name, status=status, serial_number=serial
+                name=name, status=status, serial_number=serial, criticite=criticite
             )
         else:
             success, msg, _ = resource_controller.create_resource(
-                company_id, resource_type_id, name, serial
+                company_id, resource_type_id, name, serial, criticite=criticite
             )
 
         if success:
@@ -240,6 +249,13 @@ class ResourcesView(QWidget):
                  "Maintenance": (COLORS["warning_dark"],   COLORS["warning_light"]),
                  "Retirée":     (COLORS["text_muted"],     COLORS["border_light"]),
              }},
+            {"key": "criticite_label", "label": "🔺  Criticité", "width": 120,
+             "badge": True, "badge_colors": {
+                "Faible": (COLORS["text_muted"], COLORS["border_light"]),
+                "Normal": (COLORS["info"], COLORS["info_light"]),
+                "Haute": (COLORS["warning_dark"], COLORS["warning_light"]),
+                "Critique": (COLORS["danger"], COLORS["danger_light"]),
+            }},
             {"key": "created_at",        "label": "📅  Ajouté le", "width": 120},
         ]
 

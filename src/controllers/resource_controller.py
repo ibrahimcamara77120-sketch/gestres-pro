@@ -1,4 +1,3 @@
-from typing import List, Dict, Any, Optional, Tuple
 import json
 
 from sqlalchemy.orm import joinedload
@@ -15,9 +14,7 @@ import config
 
 class ResourceController:
 
-    def get_all_resources(self, company_id: Optional[int] = None,
-                          status: Optional[str] = None,
-                          resource_type_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_all_resources(self, company_id=None, status=None, resource_type_id=None):
         with get_session() as session:
             query = session.query(Resource).options(
                 joinedload(Resource.resource_type),
@@ -33,7 +30,7 @@ class ResourceController:
             resources = query.order_by(Resource.created_at.desc()).all()
             return [self._format_resource(r) for r in resources]
 
-    def get_resource_by_id(self, resource_id: int) -> Optional[Dict[str, Any]]:
+    def get_resource_by_id(self, resource_id):
         with get_session() as session:
             resource = session.query(Resource).options(
                 joinedload(Resource.resource_type),
@@ -43,12 +40,13 @@ class ResourceController:
                 return self._format_resource(resource)
             return None
 
-    def create_resource(self, company_id: int, resource_type_id: int, name: str,
-                        serial_number: Optional[str] = None,
-                        custom_data: Optional[dict] = None) -> Tuple[bool, str, Optional[int]]:
+    def create_resource(self, company_id, resource_type_id, name,
+                        serial_number=None, criticite="normal", custom_data=None):
         name = sanitize_input(name)
         if not name or len(name) < 2:
             return False, "Nom requis (min 2 caractères)", None
+        if criticite not in config.CRITICITES:
+            return False, f"Criticité invalide : {criticite}", None
 
         with get_session() as session:
             company = session.query(Company).filter_by(id=company_id).first()
@@ -70,7 +68,8 @@ class ResourceController:
                 resource_type_id=resource_type_id,
                 name=name,
                 serial_number=serial_number,
-                status="available"
+                status="available",
+                criticite=criticite
             )
             if custom_data:
                 resource.set_custom_data(custom_data)
@@ -86,10 +85,8 @@ class ResourceController:
             session.commit()
             return True, "Ressource créée avec succès", resource.id
 
-    def update_resource(self, resource_id: int, name: Optional[str] = None,
-                        status: Optional[str] = None,
-                        serial_number: Optional[str] = None,
-                        custom_data: Optional[dict] = None) -> Tuple[bool, str]:
+    def update_resource(self, resource_id, name=None, status=None,
+                        serial_number=None, criticite=None, custom_data=None):
         with get_session() as session:
             resource = session.query(Resource).filter_by(id=resource_id).first()
             if not resource:
@@ -107,6 +104,10 @@ class ResourceController:
                 if status not in config.RESOURCE_STATUS:
                     return False, f"Statut invalide : {status}"
                 resource.status = status
+                if criticite is not None:
+                    if criticite not in config.CRITICITES:
+                        return False, f"Criticité invalide : {criticite}"
+                    resource.criticite = criticite
 
             if serial_number is not None:
                 sn = sanitize_input(serial_number)
@@ -132,7 +133,7 @@ class ResourceController:
             session.commit()
             return True, "Ressource mise à jour avec succès"
 
-    def delete_resource(self, resource_id: int) -> Tuple[bool, str]:
+    def delete_resource(self, resource_id):
         with get_session() as session:
             resource = session.query(Resource).filter_by(id=resource_id).first()
             if not resource:
@@ -152,7 +153,7 @@ class ResourceController:
             session.commit()
             return True, "Ressource retirée avec succès"
 
-    def get_resources_by_user(self, user_id: int) -> List[Dict[str, Any]]:
+    def get_resources_by_user(self, user_id):
         from src.models.assignment import Assignment
         with get_session() as session:
             subquery = (
@@ -166,7 +167,7 @@ class ResourceController:
             ).filter(Resource.id.in_(subquery)).all()
             return [self._format_resource(r) for r in resources]
 
-    def get_all_resource_types(self, company_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_all_resource_types(self, company_id=None):
         with get_session() as session:
             query = session.query(ResourceType)
             if company_id:
@@ -174,9 +175,7 @@ class ResourceController:
             types = query.order_by(ResourceType.name).all()
             return [self._format_resource_type(rt) for rt in types]
 
-    def create_resource_type(self, company_id: int, name: str,
-                             description: Optional[str] = None,
-                             custom_fields: Optional[list] = None) -> Tuple[bool, str, Optional[int]]:
+    def create_resource_type(self, company_id, name, description=None, custom_fields=None):
         name = sanitize_input(name)
         if not name or len(name) < 2:
             return False, "Nom requis (min 2 caractères)", None
@@ -193,9 +192,7 @@ class ResourceController:
             session.commit()
             return True, "Type de ressource créé", rt.id
 
-    def update_resource_type(self, rt_id: int, name: Optional[str] = None,
-                             description: Optional[str] = None,
-                             custom_fields: Optional[list] = None) -> Tuple[bool, str]:
+    def update_resource_type(self, rt_id, name=None, description=None, custom_fields=None):
         with get_session() as session:
             rt = session.query(ResourceType).filter_by(id=rt_id).first()
             if not rt:
@@ -209,9 +206,8 @@ class ResourceController:
             session.commit()
             return True, "Type mis à jour"
 
-    def _format_resource(self, resource: Resource) -> Dict[str, Any]:
-        status_labels = config.RESOURCE_STATUS
-        status_colors = {
+    def _format_resource(self, resource):
+        couleurs_statut = {
             "available": "#10b981",
             "assigned": "#2563eb",
             "maintenance": "#f59e0b",
@@ -222,8 +218,10 @@ class ResourceController:
             "name": resource.name,
             "serial_number": resource.serial_number or "",
             "status": resource.status,
-            "status_label": status_labels.get(resource.status, resource.status),
-            "status_color": status_colors.get(resource.status, "#64748b"),
+            "status_label": config.RESOURCE_STATUS.get(resource.status, resource.status),
+            "status_color": couleurs_statut.get(resource.status, "#64748b"),
+            "criticite": resource.criticite,
+            "criticite_label": config.CRITICITES.get(resource.criticite, resource.criticite),
             "resource_type_id": resource.resource_type_id,
             "resource_type_name": resource.resource_type.name if resource.resource_type else "",
             "company_id": resource.company_id,
@@ -233,7 +231,7 @@ class ResourceController:
             "created_at": resource.created_at.strftime("%d/%m/%Y") if resource.created_at else ""
         }
 
-    def _format_resource_type(self, rt: ResourceType) -> Dict[str, Any]:
+    def _format_resource_type(self, rt):
         return {
             "id": rt.id,
             "name": rt.name,

@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
 from sqlalchemy.orm import joinedload
@@ -14,7 +13,7 @@ import config
 
 class ContractController:
 
-    def get_all_contracts(self, company_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_all_contracts(self, company_id=None):
         with get_session() as session:
             query = session.query(Contract).options(
                 joinedload(Contract.assignment)
@@ -27,7 +26,7 @@ class ContractController:
             contracts = query.order_by(Contract.generated_at.desc()).all()
             return [self._format_contract(c) for c in contracts]
 
-    def get_contracts_by_user(self, user_id: int) -> List[Dict[str, Any]]:
+    def get_contracts_by_user(self, user_id):
         with get_session() as session:
             contracts = session.query(Contract).options(
                 joinedload(Contract.assignment)
@@ -36,15 +35,14 @@ class ContractController:
             ).order_by(Contract.generated_at.desc()).all()
             return [self._format_contract(c) for c in contracts]
 
-    def get_contracts_by_assignment(self, assignment_id: int) -> List[Dict[str, Any]]:
+    def get_contracts_by_assignment(self, assignment_id):
         with get_session() as session:
             contracts = session.query(Contract).filter_by(
                 assignment_id=assignment_id
             ).order_by(Contract.generated_at.desc()).all()
             return [self._format_contract(c) for c in contracts]
 
-    def generate_contract(self, assignment_id: int, objet: str,
-                          conditions: str, notes: str = "") -> Tuple[bool, str, Optional[int]]:
+    def generate_contract(self, assignment_id, objet, conditions, notes=""):
         if not objet.strip():
             return False, "L'objet du contrat est requis", None
         if not conditions.strip():
@@ -81,8 +79,7 @@ class ContractController:
 
             return True, "Contrat généré avec succès", contract.id
 
-    def sign_contract(self, contract_id: int, signer_name: str,
-                      signer_email: str) -> Tuple[bool, str]:
+    def sign_contract(self, contract_id, signer_name, signer_email):
         with get_session() as session:
             contract = session.query(Contract).filter_by(id=contract_id).first()
             if not contract:
@@ -105,7 +102,7 @@ class ContractController:
             session.commit()
             return True, "Contrat signé avec succès"
 
-    def verify_contract(self, contract_id: int) -> Tuple[bool, str]:
+    def verify_contract(self, contract_id):
         with get_session() as session:
             contract = session.query(Contract).filter_by(id=contract_id).first()
             if not contract:
@@ -114,8 +111,7 @@ class ContractController:
                 return True, "Intégrité vérifiée — contrat non modifié"
             return False, "ALERTE : le contrat a été modifié depuis sa génération"
 
-    def export_pdf(self, contract_id: int,
-                   output_path: Optional[str] = None) -> Tuple[bool, str]:
+    def export_pdf(self, contract_id, output_path=None):
         try:
             from reportlab.lib.pagesizes import A4
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -381,8 +377,7 @@ class ContractController:
 
             return True, str(pdf_path)
 
-    def _build_contract_content(self, assignment, objet: str,
-                                conditions: str, notes: str) -> str:
+    def _build_contract_content(self, assignment, objet, conditions, notes):
         resource_name = assignment.resource.name if assignment.resource else "N/A"
         serial = assignment.resource.serial_number if (assignment.resource and assignment.resource.serial_number) else "N/A"
         user_name = assignment.user.full_name if assignment.user else "N/A"
@@ -419,7 +414,7 @@ NOTES :
 {notes.strip() if notes.strip() else "Aucune note particulière."}
 """
 
-    def _format_contract(self, contract: Contract) -> Dict[str, Any]:
+    def _format_contract(self, contract):
         return {
             "id": contract.id,
             "assignment_id": contract.assignment_id,

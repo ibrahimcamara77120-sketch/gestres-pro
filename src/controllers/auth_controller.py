@@ -1,5 +1,4 @@
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 import json
 
 from sqlalchemy.orm import joinedload
@@ -13,63 +12,63 @@ from src.utils.security import (
     validate_password_strength, validate_email
 )
 
-_MAX_ATTEMPTS = 5
-_LOCKOUT_MINUTES = 15
+# Nombre max de tentatives avant blocage
+MAX_TENTATIVES = 5
+DUREE_BLOCAGE = 15  # en minutes
 
 
 class AuthController:
 
     def __init__(self):
-        self._current_user: Optional[User] = None
-        self._session_token: Optional[str] = None
-        # email → {"count": int, "since": datetime}
-        self._failed_attempts: dict = {}
+        self._current_user = None
+        self._session_token = None
+        self._failed_attempts = {}
 
     @property
-    def current_user(self) -> Optional[User]:
+    def current_user(self):
         return self._current_user
 
     @property
-    def is_authenticated(self) -> bool:
+    def is_authenticated(self):
         return self._current_user is not None
 
-    def _is_locked_out(self, email: str) -> bool:
+    def _is_locked_out(self, email):
         key = email.lower().strip()
         info = self._failed_attempts.get(key)
         if not info:
             return False
-        if info["count"] < _MAX_ATTEMPTS:
+        if info["count"] < MAX_TENTATIVES:
             return False
         elapsed = datetime.now(timezone.utc) - info["since"]
-        if elapsed < timedelta(minutes=_LOCKOUT_MINUTES):
+        if elapsed < timedelta(minutes=DUREE_BLOCAGE):
             return True
         del self._failed_attempts[key]
         return False
 
-    def _record_failure(self, email: str):
+    def _record_failure(self, email):
         key = email.lower().strip()
         info = self._failed_attempts.get(key)
         if not info:
             self._failed_attempts[key] = {"count": 1, "since": datetime.now(timezone.utc)}
         else:
             elapsed = datetime.now(timezone.utc) - info["since"]
-            if elapsed >= timedelta(minutes=_LOCKOUT_MINUTES):
+            if elapsed >= timedelta(minutes=DUREE_BLOCAGE):
                 self._failed_attempts[key] = {"count": 1, "since": datetime.now(timezone.utc)}
             else:
                 info["count"] += 1
 
-    def _reset_attempts(self, email: str):
+    def _reset_attempts(self, email):
         self._failed_attempts.pop(email.lower().strip(), None)
 
-    def login(self, email: str, password: str) -> tuple[bool, str]:
+    def login(self, email, password):
         if not email or not password:
             return False, "Email et mot de passe requis"
 
         if self._is_locked_out(email):
             self._log_failed_login(email)
             return False, (
-                f"Compte temporairement bloqué après {_MAX_ATTEMPTS} tentatives échouées. "
-                f"Réessayez dans {_LOCKOUT_MINUTES} minutes."
+                f"Compte temporairement bloqué après {MAX_TENTATIVES} tentatives échouées. "
+                f"Réessayez dans {DUREE_BLOCAGE} minutes."
             )
 
         with get_session() as session:
@@ -118,7 +117,7 @@ class AuthController:
 
             return True, f"Bienvenue, {self._current_user.full_name}!"
 
-    def logout(self) -> bool:
+    def logout(self):
         if not self.is_authenticated:
             return False
 
@@ -138,24 +137,23 @@ class AuthController:
         self._session_token = None
         return True
 
-    def has_permission(self, permission: str) -> bool:
+    def has_permission(self, permission):
         if not self.is_authenticated:
             return False
         return self._current_user.has_permission(permission)
 
-    def is_super_admin(self) -> bool:
+    def is_super_admin(self):
         if not self.is_authenticated:
             return False
         return self._current_user.role.name == "super_admin"
 
-    def is_admin(self) -> bool:
+    def is_admin(self):
         if not self.is_authenticated:
             return False
         return self._current_user.role.name in ("super_admin", "admin")
 
-    def create_user(self, email: str, password: str, first_name: str = None,
-                    last_name: str = None, role_name: str = "employee",
-                    company_id: int = None) -> tuple[bool, str, Optional[User]]:
+    def create_user(self, email, password, first_name=None, last_name=None,
+                    role_name="employee", company_id=None):
         if not validate_email(email):
             return False, "Format d'email invalide", None
 
@@ -195,7 +193,7 @@ class AuthController:
             session.expunge(user)
             return True, "Utilisateur créé avec succès", user
 
-    def change_password(self, current_password: str, new_password: str) -> tuple[bool, str]:
+    def change_password(self, current_password, new_password):
         if not self.is_authenticated:
             return False, "Non connecté"
 
@@ -218,16 +216,15 @@ class AuthController:
 
             return True, "Mot de passe modifié avec succès"
 
-    def _log_failed_login(self, email: str, user_id: int = None):
+    def _log_failed_login(self, email, user_id=None):
         with get_session() as session:
             log = AuditLog.log(action="LOGIN_FAILED", user_id=user_id,
                                table_name="users", new_values={"attempted_email": email})
             session.add(log)
             session.commit()
 
-    def create_initial_super_admin(self, email: str, password: str,
-                                   first_name: str = "Super",
-                                   last_name: str = "Admin") -> tuple[bool, str]:
+    def create_initial_super_admin(self, email, password,
+                                   first_name="Super", last_name="Admin"):
         with get_session() as session:
             super_admin_role = session.query(Role).filter_by(name="super_admin").first()
             if not super_admin_role:
