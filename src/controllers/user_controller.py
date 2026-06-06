@@ -1,4 +1,3 @@
-from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import joinedload
@@ -13,7 +12,7 @@ from src.controllers.auth_controller import auth_controller
 
 class UserController:
 
-    def get_all_users(self, company_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_all_users(self, company_id=None):
         with get_session() as session:
             query = session.query(User).options(joinedload(User.role), joinedload(User.company))
 
@@ -21,9 +20,9 @@ class UserController:
                 query = query.filter_by(company_id=company_id)
 
             users = query.order_by(User.created_at.desc()).all()
-            return [self._format_user(user) for user in users]
+            return [self._format_user(u) for u in users]
 
-    def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_user_by_id(self, user_id):
         with get_session() as session:
             user = session.query(User).options(
                 joinedload(User.role), joinedload(User.company)
@@ -33,8 +32,7 @@ class UserController:
                 return self._format_user(user)
             return None
 
-    def create_user(self, email: str, password: str, first_name: str, last_name: str,
-                    role_id: int, company_id: Optional[int] = None) -> Tuple[bool, str, Optional[int]]:
+    def create_user(self, email, password, first_name, last_name, role_id, company_id=None):
         if not auth_controller.has_permission("manage_users"):
             return False, "Permission refusée", None
 
@@ -82,9 +80,8 @@ class UserController:
 
             return True, "Utilisateur créé avec succès", user.id
 
-    def update_user(self, user_id: int, email: Optional[str] = None, first_name: Optional[str] = None,
-                    last_name: Optional[str] = None, role_id: Optional[int] = None,
-                    company_id: Optional[int] = None, is_active: Optional[bool] = None) -> Tuple[bool, str]:
+    def update_user(self, user_id, email=None, first_name=None, last_name=None,
+                    role_id=None, company_id=None, is_active=None):
         if not auth_controller.has_permission("manage_users"):
             return False, "Permission refusée"
 
@@ -146,7 +143,7 @@ class UserController:
 
             return True, "Utilisateur mis à jour avec succès"
 
-    def delete_user(self, user_id: int) -> Tuple[bool, str]:
+    def delete_user(self, user_id):
         if not auth_controller.has_permission("manage_users"):
             return False, "Permission refusée"
 
@@ -171,7 +168,7 @@ class UserController:
 
             return True, "Utilisateur désactivé avec succès"
 
-    def reset_password(self, user_id: int, new_password: str) -> Tuple[bool, str]:
+    def reset_password(self, user_id, new_password):
         if not auth_controller.has_permission("manage_users"):
             return False, "Permission refusée"
 
@@ -196,15 +193,19 @@ class UserController:
 
             return True, "Mot de passe réinitialisé avec succès"
 
-    def get_all_roles(self) -> List[Dict[str, Any]]:
+    def get_all_roles(self):
         with get_session() as session:
             roles = session.query(Role).all()
-            return [
-                {"id": role.id, "name": role.name, "display_name": self._get_role_display_name(role.name)}
-                for role in roles
-            ]
+            resultat = []
+            for role in roles:
+                resultat.append({
+                    "id": role.id,
+                    "name": role.name,
+                    "display_name": self._get_role_display_name(role.name)
+                })
+            return resultat
 
-    def _format_user(self, user: User) -> Dict[str, Any]:
+    def _format_user(self, user):
         return {
             "id": user.id,
             "email": user.email,
@@ -222,13 +223,13 @@ class UserController:
             "last_login": user.last_login.strftime("%d/%m/%Y %H:%M") if user.last_login else "Jamais"
         }
 
-    def _get_role_display_name(self, role_name: str) -> str:
-        display_names = {
+    def _get_role_display_name(self, role_name):
+        noms = {
             "super_admin": "Super Administrateur",
             "admin": "Administrateur",
             "employee": "Employé"
         }
-        return display_names.get(role_name, role_name)
+        return noms.get(role_name, role_name)
 
 
 user_controller = UserController()

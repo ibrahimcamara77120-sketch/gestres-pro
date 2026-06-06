@@ -1,5 +1,3 @@
-from typing import List, Dict, Any, Optional, Tuple
-
 from sqlalchemy import func
 
 from src.models.base import get_session
@@ -13,7 +11,7 @@ from src.controllers.auth_controller import auth_controller
 
 class CompanyController:
 
-    def get_all_companies(self, include_inactive: bool = False) -> List[Dict[str, Any]]:
+    def get_all_companies(self, include_inactive=False):
         with get_session() as session:
             query = session.query(Company)
 
@@ -24,32 +22,31 @@ class CompanyController:
 
             result = []
             for company in companies:
-                users_count = session.query(func.count(User.id)).filter(
+                nb_users = session.query(func.count(User.id)).filter(
                     User.company_id == company.id, User.is_active == True
                 ).scalar()
-                resources_count = session.query(func.count(Resource.id)).filter(
+                nb_ressources = session.query(func.count(Resource.id)).filter(
                     Resource.company_id == company.id
                 ).scalar()
-                result.append(self._format_company(company, users_count, resources_count))
+                result.append(self._format_company(company, nb_users, nb_ressources))
 
             return result
 
-    def get_company_by_id(self, company_id: int) -> Optional[Dict[str, Any]]:
+    def get_company_by_id(self, company_id):
         with get_session() as session:
             company = session.query(Company).filter_by(id=company_id).first()
 
             if company:
-                users_count = session.query(func.count(User.id)).filter(
+                nb_users = session.query(func.count(User.id)).filter(
                     User.company_id == company.id, User.is_active == True
                 ).scalar()
-                resources_count = session.query(func.count(Resource.id)).filter(
+                nb_ressources = session.query(func.count(Resource.id)).filter(
                     Resource.company_id == company.id
                 ).scalar()
-                return self._format_company(company, users_count, resources_count)
+                return self._format_company(company, nb_users, nb_ressources)
             return None
 
-    def create_company(self, name: str, siret: Optional[str] = None,
-                       address: Optional[str] = None) -> Tuple[bool, str, Optional[int]]:
+    def create_company(self, name, siret=None, address=None):
         if not auth_controller.is_super_admin():
             return False, "Permission refusée : réservé au Super Administrateur", None
 
@@ -87,8 +84,7 @@ class CompanyController:
 
             return True, "Entreprise créée avec succès", company.id
 
-    def update_company(self, company_id: int, name: Optional[str] = None, siret: Optional[str] = None,
-                       address: Optional[str] = None, is_active: Optional[bool] = None) -> Tuple[bool, str]:
+    def update_company(self, company_id, name=None, siret=None, address=None, is_active=None):
         if not auth_controller.has_permission("manage_resources"):
             return False, "Permission refusée"
 
@@ -140,7 +136,7 @@ class CompanyController:
 
             return True, "Entreprise mise à jour avec succès"
 
-    def delete_company(self, company_id: int) -> Tuple[bool, str]:
+    def delete_company(self, company_id):
         if not auth_controller.is_super_admin():
             return False, "Permission refusée : réservé au Super Administrateur"
 
@@ -149,12 +145,12 @@ class CompanyController:
             if not company:
                 return False, "Entreprise non trouvée"
 
-            active_users = session.query(func.count(User.id)).filter(
+            nb_actifs = session.query(func.count(User.id)).filter(
                 User.company_id == company_id, User.is_active == True
             ).scalar()
 
-            if active_users > 0:
-                return False, f"Impossible : {active_users} utilisateur(s) actif(s)"
+            if nb_actifs > 0:
+                return False, f"Impossible : {nb_actifs} utilisateur(s) actif(s)"
 
             company.is_active = False
 
@@ -169,25 +165,25 @@ class CompanyController:
 
             return True, "Entreprise désactivée avec succès"
 
-    def get_company_stats(self, company_id: int) -> Dict[str, Any]:
+    def get_company_stats(self, company_id):
         with get_session() as session:
-            users_count = session.query(func.count(User.id)).filter(
+            nb_users = session.query(func.count(User.id)).filter(
                 User.company_id == company_id, User.is_active == True
             ).scalar()
-            resources_count = session.query(func.count(Resource.id)).filter(
+            nb_ressources = session.query(func.count(Resource.id)).filter(
                 Resource.company_id == company_id
             ).scalar()
-            available_resources = session.query(func.count(Resource.id)).filter(
+            nb_dispo = session.query(func.count(Resource.id)).filter(
                 Resource.company_id == company_id, Resource.status == "available"
             ).scalar()
 
             return {
-                "users_count": users_count,
-                "resources_count": resources_count,
-                "available_resources": available_resources
+                "users_count": nb_users,
+                "resources_count": nb_ressources,
+                "available_resources": nb_dispo
             }
 
-    def _format_company(self, company: Company, users_count: int = 0, resources_count: int = 0) -> Dict[str, Any]:
+    def _format_company(self, company, users_count=0, resources_count=0):
         return {
             "id": company.id,
             "name": company.name,
@@ -201,7 +197,7 @@ class CompanyController:
             "created_at": company.created_at.strftime("%d/%m/%Y") if company.created_at else ""
         }
 
-    def _format_siret(self, siret: str) -> str:
+    def _format_siret(self, siret):
         if not siret or len(siret) != 14:
             return siret or ""
         return f"{siret[:3]} {siret[3:6]} {siret[6:9]} {siret[9:]}"

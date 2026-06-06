@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,16 +27,16 @@ class Assignment(Base):
     resource: Mapped["Resource"] = relationship("Resource", back_populates="assignments")
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id], back_populates="assignments")
     assigner: Mapped["User"] = relationship("User", foreign_keys=[assigned_by], back_populates="assigned_by_me")
-    contracts: Mapped[List["Contract"]] = relationship("Contract", back_populates="assignment", cascade="all, delete-orphan")
+    contracts: Mapped[list["Contract"]] = relationship("Contract", back_populates="assignment", cascade="all, delete-orphan")
 
     @property
-    def is_active(self) -> bool:
+    def is_active(self):
         return self.status == "active"
 
     @property
-    def duration_days(self) -> int | None:
+    def duration_days(self):
         end = self.end_date or datetime.now(timezone.utc).replace(tzinfo=None)
         return (end - self.start_date).days
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<Assignment(id={self.id}, resource_id={self.resource_id}, user_id={self.user_id})>"

@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Tuple
 
 from sqlalchemy.orm import joinedload
 
@@ -14,9 +13,7 @@ import config
 
 class AssignmentController:
 
-    def get_all_assignments(self, company_id: Optional[int] = None,
-                            status: Optional[str] = None,
-                            user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_all_assignments(self, company_id=None, status=None, user_id=None):
         with get_session() as session:
             query = session.query(Assignment).options(
                 joinedload(Assignment.resource),
@@ -33,7 +30,7 @@ class AssignmentController:
             assignments = query.order_by(Assignment.start_date.desc()).all()
             return [self._format_assignment(a) for a in assignments]
 
-    def get_assignment_by_id(self, assignment_id: int) -> Optional[Dict[str, Any]]:
+    def get_assignment_by_id(self, assignment_id):
         with get_session() as session:
             a = session.query(Assignment).options(
                 joinedload(Assignment.resource),
@@ -44,9 +41,7 @@ class AssignmentController:
                 return self._format_assignment(a)
             return None
 
-    def create_assignment(self, resource_id: int, user_id: int,
-                          start_date: datetime,
-                          notes: Optional[str] = None) -> Tuple[bool, str, Optional[int]]:
+    def create_assignment(self, resource_id, user_id, start_date, notes=None):
         with get_session() as session:
             resource = session.query(Resource).filter_by(id=resource_id).first()
             if not resource:
@@ -88,8 +83,7 @@ class AssignmentController:
             session.commit()
             return True, "Affectation créée avec succès", assignment.id
 
-    def close_assignment(self, assignment_id: int,
-                         end_date: Optional[datetime] = None) -> Tuple[bool, str]:
+    def close_assignment(self, assignment_id, end_date=None):
         with get_session() as session:
             a = session.query(Assignment).filter_by(id=assignment_id).first()
             if not a:
@@ -114,7 +108,7 @@ class AssignmentController:
             session.commit()
             return True, "Ressource retournée avec succès"
 
-    def cancel_assignment(self, assignment_id: int) -> Tuple[bool, str]:
+    def cancel_assignment(self, assignment_id):
         with get_session() as session:
             a = session.query(Assignment).filter_by(id=assignment_id).first()
             if not a:
@@ -139,7 +133,7 @@ class AssignmentController:
             session.commit()
             return True, "Affectation annulée"
 
-    def reactivate_assignment(self, assignment_id: int) -> Tuple[bool, str]:
+    def reactivate_assignment(self, assignment_id):
         with get_session() as session:
             a = session.query(Assignment).filter_by(id=assignment_id).first()
             if not a:
@@ -167,15 +161,14 @@ class AssignmentController:
             session.commit()
             return True, "Affectation réactivée avec succès"
 
-    def _format_assignment(self, a: Assignment) -> Dict[str, Any]:
-        status_labels = config.ASSIGNMENT_STATUS
-        status_colors = {
+    def _format_assignment(self, a):
+        couleurs = {
             "active": "#2563eb",
             "returned": "#10b981",
             "cancelled": "#ef4444"
         }
-        start = a.start_date.strftime("%d/%m/%Y") if a.start_date else ""
-        end = a.end_date.strftime("%d/%m/%Y") if a.end_date else "En cours"
+        debut = a.start_date.strftime("%d/%m/%Y") if a.start_date else ""
+        fin = a.end_date.strftime("%d/%m/%Y") if a.end_date else "En cours"
         return {
             "id": a.id,
             "resource_id": a.resource_id,
@@ -185,11 +178,11 @@ class AssignmentController:
             "user_email": a.user.email if a.user else "",
             "assigned_by": a.assigned_by,
             "assigner_name": a.assigner.full_name if a.assigner else "",
-            "start_date": start,
-            "end_date": end,
+            "start_date": debut,
+            "end_date": fin,
             "status": a.status,
-            "status_label": status_labels.get(a.status, a.status),
-            "status_color": status_colors.get(a.status, "#64748b"),
+            "status_label": config.ASSIGNMENT_STATUS.get(a.status, a.status),
+            "status_color": couleurs.get(a.status, "#64748b"),
             "notes": a.notes or "",
             "is_active": a.is_active
         }

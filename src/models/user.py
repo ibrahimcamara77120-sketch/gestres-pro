@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import json
 
 from sqlalchemy import String, Boolean, DateTime, Text, ForeignKey
@@ -24,18 +24,18 @@ class Role(Base):
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     permissions: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    users: Mapped[List["User"]] = relationship("User", back_populates="role")
+    users: Mapped[list["User"]] = relationship("User", back_populates="role")
 
-    def get_permissions(self) -> list:
+    def get_permissions(self):
         if self.permissions:
             return json.loads(self.permissions)
         return []
 
-    def has_permission(self, permission: str) -> bool:
+    def has_permission(self, permission):
         perms = self.get_permissions()
         return "all" in perms or permission in perms
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<Role(id={self.id}, name='{self.name}')>"
 
 
@@ -55,24 +55,24 @@ class User(Base):
 
     role: Mapped["Role"] = relationship("Role", back_populates="users")
     company: Mapped["Company | None"] = relationship("Company", back_populates="users")
-    assignments: Mapped[List["Assignment"]] = relationship(
+    assignments: Mapped[list["Assignment"]] = relationship(
         "Assignment", foreign_keys="Assignment.user_id", back_populates="user"
     )
-    assigned_by_me: Mapped[List["Assignment"]] = relationship(
+    assigned_by_me: Mapped[list["Assignment"]] = relationship(
         "Assignment", foreign_keys="Assignment.assigned_by", back_populates="assigner"
     )
-    audit_logs: Mapped[List["AuditLog"]] = relationship("AuditLog", back_populates="user")
-    sessions: Mapped[List["Session"]] = relationship(
+    audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="user")
+    sessions: Mapped[list["Session"]] = relationship(
         "Session", back_populates="user", cascade="all, delete-orphan"
     )
 
     @property
-    def full_name(self) -> str:
+    def full_name(self):
         parts = [self.first_name, self.last_name]
         return " ".join(p for p in parts if p) or self.email
 
-    def has_permission(self, permission: str) -> bool:
+    def has_permission(self, permission):
         return self.role.has_permission(permission)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}')>"

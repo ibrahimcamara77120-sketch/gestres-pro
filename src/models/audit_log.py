@@ -30,20 +30,19 @@ class AuditLog(Base):
 
     user: Mapped["User | None"] = relationship("User", back_populates="audit_logs")
 
-    def get_old_values(self) -> dict:
+    def get_old_values(self):
         if self.old_values:
             return json.loads(self.old_values)
         return {}
 
-    def get_new_values(self) -> dict:
+    def get_new_values(self):
         if self.new_values:
             return json.loads(self.new_values)
         return {}
 
     @classmethod
-    def log(cls, action: str, user_id: int | None = None, table_name: str | None = None,
-            record_id: int | None = None, old_values: dict | None = None,
-            new_values: dict | None = None, ip_address: str | None = None) -> "AuditLog":
+    def log(cls, action, user_id=None, table_name=None,
+            record_id=None, old_values=None, new_values=None, ip_address=None):
         return cls(
             user_id=user_id,
             action=action,
@@ -54,7 +53,7 @@ class AuditLog(Base):
             ip_address=ip_address
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<AuditLog(id={self.id}, action='{self.action}', user_id={self.user_id})>"
 
 
@@ -70,7 +69,7 @@ class Session(Base):
     user: Mapped["User"] = relationship("User", back_populates="sessions")
 
     @property
-    def is_expired(self) -> bool:
+    def is_expired(self):
         now = datetime.now(timezone.utc)
         expires = self.expires_at
         if expires.tzinfo is None:
@@ -78,8 +77,8 @@ class Session(Base):
         return now > expires
 
     @property
-    def is_valid(self) -> bool:
+    def is_valid(self):
         return not self.is_expired
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<Session(id={self.id}, user_id={self.user_id})>"

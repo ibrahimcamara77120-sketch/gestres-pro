@@ -8,29 +8,29 @@ import bcrypt
 import config
 
 
-def hash_password(password: str) -> str:
+def hash_password(password):
     salt = bcrypt.gensalt(rounds=config.BCRYPT_ROUNDS)
     hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
     return hashed.decode("utf-8")
 
 
-def verify_password(password: str, password_hash: str) -> bool:
+def verify_password(password, password_hash):
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-def generate_token() -> str:
+def generate_token():
     return secrets.token_hex(32)
 
 
-def hash_token(token: str) -> str:
+def hash_token(token):
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def generate_session_expiry() -> datetime:
+def generate_session_expiry():
     return datetime.now(timezone.utc) + timedelta(hours=config.SESSION_DURATION_HOURS)
 
 
-def validate_password_strength(password: str) -> tuple[bool, list[str]]:
+def validate_password_strength(password):
     errors = []
 
     if len(password) < config.PASSWORD_MIN_LENGTH:
@@ -51,12 +51,12 @@ def validate_password_strength(password: str) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 
 
-def validate_email(email: str) -> bool:
+def validate_email(email):
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email))
 
 
-def validate_siret(siret: str) -> bool:
+def validate_siret(siret):
     if not siret:
         return True
 
@@ -81,7 +81,7 @@ def validate_siret(siret: str) -> bool:
     return total % 10 == 0
 
 
-def sanitize_input(text: str | None) -> str | None:
+def sanitize_input(text):
     if text is None:
         return None
 
